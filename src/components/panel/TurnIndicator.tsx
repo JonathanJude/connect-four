@@ -19,6 +19,8 @@ export const TurnIndicator = React.memo(function TurnIndicator({
   aiDisc,
   isAIThinking,
   gameStatus,
+  players,
+  currentPlayerInfo,
 }: TurnIndicatorProps) {
   // Determine display text and colors based on game state
   const getTurnDisplay = () => {
@@ -54,18 +56,48 @@ export const TurnIndicator = React.memo(function TurnIndicator({
             iconColor: 'text-blue-200',
           }
         } else {
-          const isPlayerTurn = currentPlayer === 'HUMAN'
-          return {
-            ...base,
-            text: isPlayerTurn ? 'Your Turn' : "AI's Turn",
-            subtext: isPlayerTurn ? 'Click a column to place your disc' : 'AI is calculating move',
-            player: currentPlayer,
-            accentClass: isPlayerTurn
-              ? 'border-green-500/40 bg-green-500/10 ring-1 ring-inset ring-green-500/30'
-              : 'border-orange-500/40 bg-orange-500/10 ring-1 ring-inset ring-orange-500/30',
-            textClass: isPlayerTurn ? 'text-green-100' : 'text-orange-100',
-            subtextClass: isPlayerTurn ? 'text-green-200' : 'text-orange-200',
-            iconColor: isPlayerTurn ? 'text-green-200' : 'text-orange-200',
+          // Handle both single-player and multiplayer turns
+          const isHumanTurn = currentPlayer === 'HUMAN'
+          const isPlayer1Turn = currentPlayer === 'PLAYER_1'
+          const isPlayer2Turn = currentPlayer === 'PLAYER_2'
+
+          if (isHumanTurn) {
+            return {
+              ...base,
+              text: 'Your Turn',
+              subtext: 'Click a column to place your disc',
+              player: 'HUMAN',
+              accentClass: 'border-green-500/40 bg-green-500/10 ring-1 ring-inset ring-green-500/30',
+              textClass: 'text-green-100',
+              subtextClass: 'text-green-200',
+              iconColor: 'text-green-200',
+            }
+          } else if (isPlayer1Turn || isPlayer2Turn) {
+            const playerInfo = currentPlayerInfo || (isPlayer1Turn ? players?.[0] : players?.[1])
+            const isPlayer1 = isPlayer1Turn
+            return {
+              ...base,
+              text: `${playerInfo?.name || (isPlayer1 ? 'Player 1' : 'Player 2')}'s Turn`,
+              subtext: 'Click a column to place your disc',
+              player: currentPlayer,
+              accentClass: isPlayer1
+                ? 'border-green-500/40 bg-green-500/10 ring-1 ring-inset ring-green-500/30'
+                : 'border-orange-500/40 bg-orange-500/10 ring-1 ring-inset ring-orange-500/30',
+              textClass: isPlayer1 ? 'text-green-100' : 'text-orange-100',
+              subtextClass: isPlayer1 ? 'text-green-200' : 'text-orange-200',
+              iconColor: isPlayer1 ? 'text-green-200' : 'text-orange-200',
+            }
+          } else {
+            return {
+              ...base,
+              text: "AI's Turn",
+              subtext: 'AI is calculating move',
+              player: 'AI',
+              accentClass: 'border-orange-500/40 bg-orange-500/10 ring-1 ring-inset ring-orange-500/30',
+              textClass: 'text-orange-100',
+              subtextClass: 'text-orange-200',
+              iconColor: 'text-orange-200',
+            }
           }
         }
 
@@ -75,6 +107,30 @@ export const TurnIndicator = React.memo(function TurnIndicator({
           text: 'You Won!',
           subtext: 'Congratulations!',
           player: 'HUMAN',
+          accentClass: 'border-green-500/50 bg-green-500/15 ring-1 ring-inset ring-green-500/30',
+          textClass: 'text-green-100',
+          subtextClass: 'text-green-200',
+          iconColor: 'text-green-300',
+        }
+
+      case 'PLAYER_1_WON':
+        return {
+          ...base,
+          text: `${players?.[0]?.name || 'Player 1'} Won!`,
+          subtext: 'Congratulations!',
+          player: 'PLAYER_1',
+          accentClass: 'border-green-500/50 bg-green-500/15 ring-1 ring-inset ring-green-500/30',
+          textClass: 'text-green-100',
+          subtextClass: 'text-green-200',
+          iconColor: 'text-green-300',
+        }
+
+      case 'PLAYER_2_WON':
+        return {
+          ...base,
+          text: `${players?.[1]?.name || 'Player 2'} Won!`,
+          subtext: 'Congratulations!',
+          player: 'PLAYER_2',
           accentClass: 'border-green-500/50 bg-green-500/15 ring-1 ring-inset ring-green-500/30',
           textClass: 'text-green-100',
           subtextClass: 'text-green-200',
@@ -122,9 +178,11 @@ export const TurnIndicator = React.memo(function TurnIndicator({
   const display = getTurnDisplay()
 
   // Get disc color for display
-  const getDiscColor = (player: 'HUMAN' | 'AI' | null) => {
+  const getDiscColor = (player: 'HUMAN' | 'AI' | 'PLAYER_1' | 'PLAYER_2' | null) => {
     if (player === 'HUMAN') return playerDisc
     if (player === 'AI') return aiDisc
+    if (player === 'PLAYER_1') return players?.[0]?.discColor || 'red'
+    if (player === 'PLAYER_2') return players?.[1]?.discColor || 'yellow'
     return null
   }
 

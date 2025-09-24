@@ -17,7 +17,11 @@
       "Bash(pkill:*)",
       "Bash(timeout:*)",
       "Bash(npm run lint)",
-      "Bash(npm install:*)"
+      "Bash(npm install:*)",
+      "Bash(openspec:*)",
+      "Bash(xxd:*)",
+      "Bash(find:*)",
+      "Bash(npm run type-check:*)"
     ],
     "deny": [],
     "ask": []

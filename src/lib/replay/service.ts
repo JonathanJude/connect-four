@@ -15,6 +15,7 @@ import {
   type GameHistoryEntry,
   type GameHistoryFilter
 } from '@/types/history'
+import type { DiscColor, PlayerInfo } from '@/lib/game/constants'
 
 /**
  * Replay Service Configuration
@@ -98,9 +99,19 @@ class ReplaySessionImpl implements ReplaySession {
         const { row, col } = move.position
         if (row >= 0 && row < 6 && col >= 0 && col < 7) {
           // Get the player's disc color
-          const discColor = move.player === 'HUMAN'
-            ? this.metadata.gameData.playerDisc
-            : this.metadata.gameData.aiDisc
+          let discColor: DiscColor
+          if (move.player === 'HUMAN') {
+            discColor = this.metadata.gameData.playerDisc
+          } else if (move.player === 'AI') {
+            discColor = this.metadata.gameData.aiDisc
+          } else if (move.player === 'PLAYER_1' || move.player === 'PLAYER_2') {
+            // For multiplayer games, get disc color from players metadata
+            const players = this.metadata.gameData.metadata?.players || []
+            const player = players.find(p => p.type === move.player)
+            discColor = player?.discColor || (move.player === 'PLAYER_1' ? 'red' : 'yellow')
+          } else {
+            discColor = this.metadata.gameData.playerDisc // fallback
+          }
           boardState.grid[row][col] = discColor
         }
       }

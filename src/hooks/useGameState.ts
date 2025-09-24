@@ -18,6 +18,8 @@ import {
   type GameState as NewGameState,
   GameStatus as NewGameStatus,
   createDefaultGameState,
+  createMultiplayerGameState,
+  type PlayerInfo,
 } from '../types/game'
 import {
   isValidMove,
@@ -240,6 +242,102 @@ function gameReducer(state: NewGameState, action: any): NewGameState {
       }
     }
 
+    case 'START_MULTIPLAYER_GAME': {
+      const players = action.payload.players
+      const multiplayerState = createMultiplayerGameState(players)
+
+      return {
+        ...multiplayerState,
+        id: generateId(),
+        status: NewGameStatus.IN_PROGRESS,
+        startedAt: currentTime,
+        players: players,
+        currentPlayerInfo: players[0],
+      }
+    }
+
+    case 'MAKE_MULTIPLAYER_MOVE': {
+      if (state.status !== 'IN_PROGRESS' || state.isPaused || state.gameMode !== 'MULTIPLAYER') {
+        return state
+      }
+
+      const column = action.payload.column
+      const player = action.payload.player
+
+      const move: Move = {
+        id: generateId(),
+        gameId: state.id,
+        player: player.type,
+        column,
+        row: 0, // Will be set by applyMove
+        timestamp: currentTime,
+      }
+
+      try {
+        const newBoard = applyMove(state.board, move, player.discColor, player.discColor === 'red' ? 'yellow' : 'red')
+
+        // Create a temporary game state for winner checking
+        const tempGameState = {
+          ...state,
+          board: newBoard
+        }
+
+        const winner = checkWinner(convertToPersistenceFormat(tempGameState))
+        const boardFull = isBoardFull(newBoard)
+
+        // Determine game status
+        let newStatus: NewGameStatus
+        if (winner?.winner) {
+          if (winner.winner === 'HUMAN') {
+            // In multiplayer, we need to determine which player won based on the disc color
+            newStatus = player.discColor === state.playerDisc ? NewGameStatus.PLAYER_WON : NewGameStatus.PLAYER_1_WON
+          } else {
+            newStatus = NewGameStatus.AI_WON
+          }
+        } else if (boardFull) {
+          newStatus = NewGameStatus.DRAW
+        } else {
+          newStatus = NewGameStatus.IN_PROGRESS
+        }
+
+        // Switch to the other player
+        const nextPlayer = state.players?.find(p => p.type !== player.type)
+
+        const result: NewGameState = {
+          ...state,
+          board: newBoard,
+          status: newStatus,
+          currentPlayer: nextPlayer?.type || 'PLAYER_1',
+          moves: [...state.moves, move],
+        }
+
+        // Only add currentPlayerInfo if it exists
+        if (nextPlayer) {
+          result.currentPlayerInfo = nextPlayer
+        }
+
+        // Only add winner property if it exists
+        if (winner?.winner) {
+          if (winner.winner === 'HUMAN') {
+            // In multiplayer, set the winner to the actual player type
+            result.winner = player.type
+          } else {
+            result.winner = winner.winner
+          }
+        }
+
+        // Only add winningLine property if it exists
+        if (winner?.winningLine) {
+          result.winningLine = convertWinningLineToArray(winner.winningLine)
+        }
+
+        return result
+      } catch (error) {
+        console.error('Invalid multiplayer move:', error)
+        return state
+      }
+    }
+
     case 'LOAD_GAME': {
       return {
         ...action.payload,
@@ -276,7 +374,9 @@ export interface UseGameStateReturn {
 
   // Actions
   startNewGame: (difficulty: Difficulty, playerDisc: DiscColor) => void
+  startMultiplayerGame: (players: PlayerInfo[]) => void
   makeMove: (column: number) => void
+  makeMultiplayerMove: (column: number, player: PlayerInfo) => void
   resetGame: () => void
   pauseGame: () => void
   resumeGame: () => void
@@ -389,11 +489,12 @@ export function useGameState(): UseGameStateReturn {
           id: gameData.id,
           board: gameData.boardState || gameData.board,
           status: gameData.status,
-          difficulty: gameToLoad.difficulty,
+          difficulty: gameToLoad.difficulty || 'medium',
           playerDisc: gameToLoad.playerDisc,
-          aiDisc: gameToLoad.aiDisc,
+          aiDisc: gameToLoad.aiDisc || (gameToLoad.playerDisc === 'red' ? 'yellow' : 'red'),
           currentPlayer: gameData.currentPlayer,
           isPaused: gameData.isPaused,
+          gameMode: gameData.gameMode || 'SINGLE_PLAYER',
           moves: gameToLoad.moves.map(move => ({
             id: generateId(),
             gameId: gameData.id,
@@ -557,24 +658,47 @@ export function useGameState(): UseGameStateReturn {
           },
         }))
 
+        // Map game status to winner field for history
+        let winner: Player | 'DRAW' | null = null
+        if (gameState.status === NewGameStatus.PLAYER_WON) {
+          winner = 'HUMAN'
+        } else if (gameState.status === NewGameStatus.AI_WON) {
+          winner = 'AI'
+        } else if (gameState.status === NewGameStatus.PLAYER_1_WON) {
+          winner = 'PLAYER_1'
+        } else if (gameState.status === NewGameStatus.PLAYER_2_WON) {
+          winner = 'PLAYER_2'
+        } else if (gameState.status === NewGameStatus.DRAW) {
+          winner = 'DRAW'
+        }
+
         const gameData: Omit<GameHistoryEntry, 'id' | 'createdAt'> = {
           playerId: 'default',
           playerDisc: gameState.playerDisc,
-          aiDisc: gameState.aiDisc,
-          difficulty: gameState.difficulty,
+          aiDisc: gameState.gameMode === 'SINGLE_PLAYER' ? gameState.aiDisc : undefined,
+          difficulty: gameState.gameMode === 'SINGLE_PLAYER' ? gameState.difficulty : undefined,
           status: gameState.status,
-          winner: gameState.winner || null,
+          winner,
           moves: transformedMoves,
           duration: gameState.startedAt ? new Date().getTime() - gameState.startedAt.getTime() : 0,
           completedAt: gameState.status !== NewGameStatus.IN_PROGRESS && gameState.status !== NewGameStatus.PAUSED ? new Date() : null,
           metadata: {
-            id: gameState.id,
-            board: gameState.board,
-            currentPlayer: gameState.currentPlayer,
-            isPaused: gameState.isPaused,
+            ...(gameState.gameMode === 'MULTIPLAYER' ? {
+              gameMode: 'MULTIPLAYER' as const,
+              players: gameState.players || []
+            } : {
+              gameMode: 'SINGLE_PLAYER' as const,
+              aiThinkTime: 0,
+              playerThinkTime: 0
+            }),
+            boardState: {
+              rows: gameState.board.rows,
+              columns: gameState.board.columns,
+              grid: gameState.board.grid,
+            },
             ...(gameState.winningLine && { winningLine: gameState.winningLine }),
           }
-        }
+        } as any
 
         await historyService.saveGame(gameData)
 
@@ -599,6 +723,14 @@ export function useGameState(): UseGameStateReturn {
     []
   )
 
+  const startMultiplayerGame = useCallback(
+    (players: PlayerInfo[]) => {
+      dispatch({ type: 'START_MULTIPLAYER_GAME', payload: { players } })
+      setBoardUIState(prev => ({ ...prev, hoveredColumn: null }))
+    },
+    []
+  )
+
   const makeMove = useCallback(
     (column: number) => {
       if (gameState.status === 'IN_PROGRESS' && gameState.currentPlayer === 'HUMAN') {
@@ -606,6 +738,15 @@ export function useGameState(): UseGameStateReturn {
       }
     },
     [gameState.status, gameState.currentPlayer]
+  )
+
+  const makeMultiplayerMove = useCallback(
+    (column: number, player: PlayerInfo) => {
+      if (gameState.status === 'IN_PROGRESS' && gameState.gameMode === 'MULTIPLAYER') {
+        dispatch({ type: 'MAKE_MULTIPLAYER_MOVE', payload: { column, player } })
+      }
+    },
+    [gameState.status, gameState.gameMode]
   )
 
   const resetGame = useCallback(() => {
@@ -734,7 +875,9 @@ export function useGameState(): UseGameStateReturn {
     gameState,
     boardUIState,
     startNewGame,
+    startMultiplayerGame,
     makeMove,
+    makeMultiplayerMove,
     resetGame,
     pauseGame,
     resumeGame,

@@ -477,7 +477,7 @@ export class HardAI {
 
     for (const column of validMoves) {
       const testBoard = cloneBoard(board)
-      const boardAfterMove = placeDisc(testBoard, column, playerDisc)
+      placeDisc(testBoard, column, playerDisc)
 
       if (isForcedWin(board, column, playerDisc, opponentDisc, 1)) {
         return column
@@ -499,7 +499,7 @@ export class HardAI {
 
     for (const column of validMoves) {
       const testBoard = cloneBoard(board)
-      const boardAfterMove = placeDisc(testBoard, column, opponentDisc)
+      placeDisc(testBoard, column, opponentDisc)
 
       if (isForcedWin(board, column, opponentDisc, playerDisc, 1)) {
         return column
@@ -673,7 +673,6 @@ export function getHardAIAnalysis(
   searchDepth: number
   nodesEvaluated: number
 } {
-  const ai = new HardAI()
   const validMoves = getValidMoves(board)
 
   if (validMoves.length === 0) {
@@ -682,7 +681,7 @@ export function getHardAIAnalysis(
 
   if (validMoves.length === 1) {
     return {
-      bestMove: validMoves[0],
+      bestMove: validMoves[0]!,
       score: 0,
       confidence: 1.0,
       searchDepth: 1,
@@ -691,7 +690,7 @@ export function getHardAIAnalysis(
   }
 
   // Quick evaluation for each move with reduced depth
-  let bestMove = validMoves[0]
+  let bestMove = validMoves[0]!
   let bestScore = -Infinity
 
   for (const column of validMoves) {

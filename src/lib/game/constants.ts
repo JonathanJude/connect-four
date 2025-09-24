@@ -4,10 +4,11 @@
  */
 
 // Core Types
-export type Player = 'HUMAN' | 'AI'
-export type GameStatus = 'NOT_STARTED' | 'IN_PROGRESS' | 'HUMAN_WIN' | 'AI_WIN' | 'DRAW' | 'PAUSED'
+export type Player = 'HUMAN' | 'AI' | 'PLAYER_1' | 'PLAYER_2'
+export type GameStatus = 'NOT_STARTED' | 'IN_PROGRESS' | 'HUMAN_WIN' | 'AI_WIN' | 'PLAYER_1_WON' | 'PLAYER_2_WON' | 'DRAW' | 'PAUSED'
 export type Difficulty = 'easy' | 'medium' | 'hard'
 export type DiscColor = 'red' | 'yellow'
+export type GameMode = 'SINGLE_PLAYER' | 'MULTIPLAYER'
 
 // Board Configuration
 export const BOARD_ROWS = 6
@@ -79,6 +80,39 @@ export interface GameSettings {
   reduceMotion: boolean
   soundEnabled: boolean
   lastVersion?: string
+}
+
+// Player Information for Multiplayer
+export interface PlayerInfo {
+  id: string
+  name: string
+  discColor: DiscColor
+  type: 'PLAYER_1' | 'PLAYER_2'
+}
+
+// Multiplayer Settings
+export interface MultiplayerSettings {
+  player1Name: string
+  player2Name: string
+  player1Disc: DiscColor
+  player2Disc: DiscColor
+  enableAnimations: boolean
+  enableSound: boolean
+  theme: 'light' | 'dark' | 'auto'
+}
+
+// Extended Game State for Multiplayer
+export interface MultiplayerGameState extends GameState {
+  gameMode: GameMode
+  players: PlayerInfo[]
+  currentPlayerInfo: PlayerInfo
+  multiplayerSettings: MultiplayerSettings
+}
+
+// Extended Game Settings for Multiplayer
+export interface ExtendedGameSettings extends GameSettings {
+  gameMode: GameMode
+  multiplayerSettings: MultiplayerSettings
 }
 
 // Game History
