@@ -11,13 +11,10 @@ export const createEmptyBoard = (): Board => {
   };
 };
 
+import { createDefaultGameState } from '@/types/game';
+
 export const createInitialGameState = (): GameState => {
-  return {
-    board: createEmptyBoard(),
-    currentPlayer: 'PLAYER_1' as Player,
-    winner: undefined,
-    isDraw: false,
-  };
+  return createDefaultGameState();
 };
 
 export const dropPiece = (board: Board, column: number, player: DiscColor): Board | null => {

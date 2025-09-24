@@ -216,7 +216,7 @@ export const Board = React.memo(function Board({
   }, [shouldShowHoverPreview, prefersReducedMotion])
 
   // Render column header (for accessibility)
-  const renderColumnHeader = (_column: number) => {
+  const renderColumnHeader = (_column: number): null => {
     return null // Removed column labels as requested
   }
 

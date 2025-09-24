@@ -53,8 +53,8 @@ export class HardAI {
     this.nodesEvaluated = 0
     this.pruningCount = 0
     this.transpositionTable = new Map()
-    this.killerMoves = Array(12).fill(null).map(() => [])
-    this.historyHeuristic = Array(BOARD_COLUMNS).fill(null).map(() => Array(BOARD_COLUMNS).fill(0))
+    this.killerMoves = Array(12).fill(null).map((): number[] => [])
+    this.historyHeuristic = Array(BOARD_COLUMNS).fill(null).map((): number[] => Array(BOARD_COLUMNS).fill(0))
     this.currentSearchDepth = 1
     this.ageCounter = 0
   }
@@ -605,8 +605,8 @@ export class HardAI {
     this.nodesEvaluated = 0
     this.pruningCount = 0
     this.transpositionTable.clear()
-    this.killerMoves = Array(12).fill(null).map(() => [])
-    this.historyHeuristic = Array(BOARD_COLUMNS).fill(null).map(() => Array(BOARD_COLUMNS).fill(0))
+    this.killerMoves = Array(12).fill(null).map((): number[] => [])
+    this.historyHeuristic = Array(BOARD_COLUMNS).fill(null).map((): number[] => Array(BOARD_COLUMNS).fill(0))
     this.currentSearchDepth = 1
     this.ageCounter = 0
   }

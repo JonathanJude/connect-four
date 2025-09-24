@@ -273,7 +273,7 @@ function MoveList({
  * Game Info Component
  */
 function GameInfo({ game }: { game: ReplayGame }) {
-  const getResultDisplay = () => {
+  const getResultDisplay = (): { text: string; icon: string; color: string } => {
     if (game.winner === 'DRAW') {
       return { text: 'Draw', icon: '🤝', color: 'text-yellow-600 dark:text-yellow-400' }
     }
@@ -392,8 +392,8 @@ export default function ReplayPage() {
   const [error, setError] = useState<string | null>(null)
 
   // Load game data
-  useEffect(() => {
-    const loadGame = async () => {
+  useEffect((): void => {
+    const loadGame = async (): Promise<void> => {
       try {
         setIsLoading(true)
         setError(null)
@@ -423,7 +423,7 @@ export default function ReplayPage() {
   }, [gameId])
 
   // Auto-play functionality
-  useEffect(() => {
+  useEffect((): (() => void) | void => {
     if (!isPlaying || !game || currentMove >= game.moves.length) {
       setIsPlaying(false)
       return
@@ -437,7 +437,7 @@ export default function ReplayPage() {
   }, [isPlaying, currentMove, game, playbackSpeed])
 
   // Update board when current move changes - reconstruct board from all moves up to current point
-  useEffect(() => {
+  useEffect((): void => {
     if (game) {
       const board = createEmptyBoard()
 

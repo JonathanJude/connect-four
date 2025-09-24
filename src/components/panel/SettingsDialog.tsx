@@ -142,7 +142,7 @@ export function SettingsDialog({
   }, [settings, onClose])
 
   // Handle keyboard shortcuts
-  useEffect(() => {
+  useEffect((): (() => void) | void => {
     if (!isOpen) return
 
     const handleKeyDown = (event: KeyboardEvent) => {
