@@ -7,16 +7,12 @@
 import {
   type Board,
   type DiscColor,
-  type Player,
-  BOARD_COLUMNS,
   AI_TIME_BUDGETS,
-  CONNECT_LENGTH,
 } from '../game/constants'
 import {
   cloneBoard,
   getValidMoves,
   placeDisc,
-  removeTopDisc,
   isBoardFull,
 } from '../game/board'
 import {
@@ -102,7 +98,7 @@ export class MediumAI {
 
     for (const column of validMoves) {
       const testBoard = cloneBoard(board)
-      const boardAfterMove = placeDisc(testBoard, column, playerDisc)
+      placeDisc(testBoard, column, playerDisc)
 
       // Check if this move creates a win
       if (isForcedWin(board, column, playerDisc, opponentDisc, 1)) {

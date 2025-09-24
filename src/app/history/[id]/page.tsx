@@ -12,13 +12,14 @@ import { Button } from '@/components/ui/Button'
 import { ThemeToggle } from '@/components/theme/ThemeProvider'
 import { cn } from '@/lib/utils'
 import { type Board as BoardType, type Position, type DiscColor } from '@/types/game'
+import type { PlayerInfo } from '@/types/game'
 import { historyService } from '@/lib/history/service'
 
 /**
  * Replay Move Interface
  */
 interface ReplayMove {
-  player: 'HUMAN' | 'AI'
+  player: 'HUMAN' | 'AI' | 'PLAYER_1' | 'PLAYER_2'
   position: Position
   timestamp: number
   boardState: BoardType
@@ -30,12 +31,41 @@ interface ReplayMove {
 interface ReplayGame {
   id: string
   playerDisc: DiscColor
-  aiDisc: DiscColor
-  difficulty: string
-  winner: 'HUMAN' | 'AI' | 'DRAW'
+  aiDisc?: DiscColor
+  difficulty?: string
+  winner: 'HUMAN' | 'AI' | 'PLAYER_1' | 'PLAYER_2' | 'DRAW'
   moves: ReplayMove[]
   createdAt: Date
   duration: number
+  gameMode?: 'SINGLE_PLAYER' | 'MULTIPLAYER'
+  players?: PlayerInfo[]
+  metadata?: any
+}
+
+/**
+ * Get player display name for replay
+ */
+function getPlayerDisplayName(player: string, game: ReplayGame): string {
+  if (player === 'HUMAN') return 'You'
+  if (player === 'AI') return 'AI'
+  if (player === 'PLAYER_1' || player === 'PLAYER_2') {
+    const playerInfo = game.players?.find(p => p.type === player)
+    return playerInfo?.name || player.replace('_', ' ')
+  }
+  return player
+}
+
+/**
+ * Get player disc color for replay
+ */
+function getPlayerDiscColor(player: string, game: ReplayGame): DiscColor {
+  if (player === 'HUMAN') return game.playerDisc
+  if (player === 'AI') return game.aiDisc || 'yellow'
+  if (player === 'PLAYER_1' || player === 'PLAYER_2') {
+    const playerInfo = game.players?.find(p => p.type === player)
+    return playerInfo?.discColor || (player === 'PLAYER_1' ? 'red' : 'yellow')
+  }
+  return game.playerDisc
 }
 
 /**
@@ -63,6 +93,9 @@ function convertToReplayFormat(historyData: any): ReplayGame {
     })),
     createdAt: new Date(historyData.createdAt),
     duration: historyData.duration,
+    gameMode: historyData.metadata?.gameMode,
+    players: historyData.metadata?.players,
+    metadata: historyData.metadata,
   }
 }
 
@@ -189,14 +222,12 @@ function MoveList({
   moves,
   currentMove,
   onMoveSelect,
-  playerDisc,
-  aiDisc,
+  game,
 }: {
   moves: ReplayMove[]
   currentMove: number
   onMoveSelect: (moveIndex: number) => void
-  playerDisc: DiscColor
-  aiDisc: DiscColor
+  game: ReplayGame
 }) {
   return (
     <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 max-h-96 overflow-y-auto">
@@ -219,12 +250,10 @@ function MoveList({
             <div className="flex items-center space-x-2">
               <div className={cn(
                 'w-4 h-4 rounded-full',
-                move.player === 'HUMAN'
-                  ? playerDisc === 'red' ? 'bg-red-500' : 'bg-yellow-400'
-                  : aiDisc === 'red' ? 'bg-red-500' : 'bg-yellow-400'
+                getPlayerDiscColor(move.player, game) === 'red' ? 'bg-red-500' : 'bg-yellow-400'
               )} />
               <span className="text-sm font-medium">
-                {move.player === 'HUMAN' ? 'You' : 'AI'}
+                {getPlayerDisplayName(move.player, game)}
               </span>
               <span className="text-sm text-gray-500 dark:text-gray-400">
                 Column {move.position.column + 1}
@@ -245,13 +274,20 @@ function MoveList({
  */
 function GameInfo({ game }: { game: ReplayGame }) {
   const getResultDisplay = () => {
+    if (game.winner === 'DRAW') {
+      return { text: 'Draw', icon: '🤝', color: 'text-yellow-600 dark:text-yellow-400' }
+    }
+
+    if (game.gameMode === 'MULTIPLAYER' && (game.winner === 'PLAYER_1' || game.winner === 'PLAYER_2')) {
+      const winnerName = getPlayerDisplayName(game.winner, game)
+      return { text: `${winnerName} Won!`, icon: '🎉', color: 'text-green-600 dark:text-green-400' }
+    }
+
     switch (game.winner) {
       case 'HUMAN':
         return { text: 'You Won!', icon: '🎉', color: 'text-green-600 dark:text-green-400' }
       case 'AI':
         return { text: 'AI Won', icon: '🤖', color: 'text-red-600 dark:text-red-400' }
-      case 'DRAW':
-        return { text: 'Draw', icon: '🤝', color: 'text-yellow-600 dark:text-yellow-400' }
       default:
         return { text: 'Unknown', icon: '❓', color: 'text-gray-600 dark:text-gray-400' }
     }
@@ -266,36 +302,54 @@ function GameInfo({ game }: { game: ReplayGame }) {
       </h3>
       <div className="grid grid-cols-2 gap-4">
         <div>
+          <div className="text-sm text-gray-500 dark:text-gray-400">Game Mode</div>
+          <div className="font-medium capitalize">
+            {game.gameMode === 'MULTIPLAYER' ? 'Multiplayer' : 'Single Player'}
+          </div>
+        </div>
+        <div>
           <div className="text-sm text-gray-500 dark:text-gray-400">Result</div>
           <div className={cn('font-medium flex items-center space-x-1', result.color)}>
             <span>{result.icon}</span>
             <span>{result.text}</span>
           </div>
         </div>
-        <div>
-          <div className="text-sm text-gray-500 dark:text-gray-400">Difficulty</div>
-          <div className="font-medium capitalize">{game.difficulty}</div>
-        </div>
-        <div>
-          <div className="text-sm text-gray-500 dark:text-gray-400">Your Color</div>
-          <div className="flex items-center space-x-2">
-            <div className={cn(
-              'w-4 h-4 rounded-full',
-              game.playerDisc === 'red' ? 'bg-red-500' : 'bg-yellow-400'
-            )} />
-            <span className="font-medium capitalize">{game.playerDisc}</span>
-          </div>
-        </div>
-        <div>
-          <div className="text-sm text-gray-500 dark:text-gray-400">AI Color</div>
-          <div className="flex items-center space-x-2">
-            <div className={cn(
-              'w-4 h-4 rounded-full',
-              game.aiDisc === 'red' ? 'bg-red-500' : 'bg-yellow-400'
-            )} />
-            <span className="font-medium capitalize">{game.aiDisc}</span>
-          </div>
-        </div>
+        {game.gameMode === 'SINGLE_PLAYER' && (
+          <>
+            <div>
+              <div className="text-sm text-gray-500 dark:text-gray-400">Difficulty</div>
+              <div className="font-medium capitalize">{game.difficulty || 'Unknown'}</div>
+            </div>
+            <div>
+              <div className="text-sm text-gray-500 dark:text-gray-400">AI Color</div>
+              <div className="flex items-center space-x-2">
+                <div className={cn(
+                  'w-4 h-4 rounded-full',
+                  game.aiDisc === 'red' ? 'bg-red-500' : 'bg-yellow-400'
+                )} />
+                <span className="font-medium capitalize">{game.aiDisc || 'yellow'}</span>
+              </div>
+            </div>
+          </>
+        )}
+        {game.gameMode === 'MULTIPLAYER' && game.players && (
+          <>
+            {game.players.map((player, index) => (
+              <div key={player.type}>
+                <div className="text-sm text-gray-500 dark:text-gray-400">
+                  Player {index + 1}
+                </div>
+                <div className="flex items-center space-x-2">
+                  <div className={cn(
+                    'w-4 h-4 rounded-full',
+                    player.discColor === 'red' ? 'bg-red-500' : 'bg-yellow-400'
+                  )} />
+                  <span className="font-medium">{player.name}</span>
+                </div>
+              </div>
+            ))}
+          </>
+        )}
         <div>
           <div className="text-sm text-gray-500 dark:text-gray-400">Total Moves</div>
           <div className="font-medium">{game.moves.length}</div>
@@ -393,7 +447,7 @@ export default function ReplayPage() {
         if (move && move.position) {
           const { row, column } = move.position
           if (row >= 0 && row < 6 && column >= 0 && column < 7) {
-            const discColor = move.player === 'HUMAN' ? game.playerDisc : game.aiDisc
+            const discColor = getPlayerDiscColor(move.player, game)
             if (discColor && board.grid[row] && board.grid[row][column] !== undefined) {
               board.grid[row][column] = discColor
             }
@@ -565,8 +619,7 @@ export default function ReplayPage() {
               moves={game.moves}
               currentMove={currentMove}
               onMoveSelect={handleMoveSelect}
-              playerDisc={game.playerDisc}
-              aiDisc={game.aiDisc}
+              game={game}
             />
           </div>
         </div>

@@ -20,7 +20,8 @@
       "Bash(npm install:*)",
       "Bash(openspec:*)",
       "Bash(xxd:*)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "Bash(npm run type-check:*)"
     ],
     "deny": [],
     "ask": []

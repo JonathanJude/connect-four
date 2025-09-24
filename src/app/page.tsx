@@ -9,6 +9,7 @@ import React, { useState, useCallback, useEffect } from 'react'
 import { Board } from '@/components/board/Board'
 import { Controls } from '@/components/panel/Controls'
 import { TurnIndicator } from '@/components/panel/TurnIndicator'
+import { MainMenu } from '@/components/MainMenu'
 import WinCelebration from '@/components/celebration/WinCelebration'
 import { useGameState } from '@/hooks/useGameState'
 import { useAI } from '@/hooks/useAI'
@@ -16,7 +17,7 @@ import { useSettingsContext } from '@/contexts/SettingsContext'
 import { GameErrorBoundary } from '@/components/error/ErrorBoundary'
 import { useLogger } from '@/lib/logging/logger'
 import { validateMove, validateAIMove } from '@/lib/validation/validators'
-import { GameStatus } from '@/types/game'
+import { GameStatus, PlayerInfo } from '@/types/game'
 
 /**
  * Convert GameStatus from constants to component format for compatibility
@@ -26,11 +27,24 @@ function convertGameStatus(status: any): GameStatus {
     case 'IN_PROGRESS': return GameStatus.IN_PROGRESS
     case 'HUMAN_WIN': return GameStatus.PLAYER_WON
     case 'AI_WIN': return GameStatus.AI_WON
+    case 'PLAYER_1_WON': return GameStatus.PLAYER_1_WON
+    case 'PLAYER_2_WON': return GameStatus.PLAYER_2_WON
     case 'DRAW': return GameStatus.DRAW
     case 'PAUSED': return GameStatus.PAUSED
     case 'NOT_STARTED': return GameStatus.NOT_STARTED
     default: return GameStatus.NOT_STARTED
   }
+}
+
+/**
+ * Convert winner from game state to WinCelebration format
+ */
+function convertWinnerForCelebration(winner: any): 'HUMAN' | 'AI' | null {
+  if (!winner) return null
+  if (winner === 'HUMAN' || winner === 'AI') return winner
+  // For multiplayer, map PLAYER_1 and PLAYER_2 to HUMAN for celebration purposes
+  if (winner === 'PLAYER_1' || winner === 'PLAYER_2') return 'HUMAN'
+  return null
 }
 
 /**
@@ -43,10 +57,22 @@ function GameStats({ gameState }: { gameState: any }) {
     const duration = gameState.duration || 0
     const formattedDuration = formatDuration(duration)
 
+    // Handle different game modes
+    if (gameState.gameMode === 'MULTIPLAYER') {
+      return {
+        moves: moves.length,
+        duration: formattedDuration,
+        currentPlayer: gameState.currentPlayerInfo?.name || 'Unknown',
+        gameMode: 'Multiplayer',
+        players: gameState.players || [],
+      }
+    }
+
     return {
       moves: moves.length,
       duration: formattedDuration,
-      currentPlayer: gameState.currentPlayer,
+      currentPlayer: gameState.currentPlayer === 'HUMAN' ? 'You' : 'AI',
+      gameMode: 'Single Player',
       difficulty: gameState.difficulty,
     }
   }
@@ -54,30 +80,30 @@ function GameStats({ gameState }: { gameState: any }) {
   const stats = getGameStats()
 
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 text-center">
-      <div className="bg-white dark:bg-gray-800 rounded-lg p-2 sm:p-3 border border-gray-200 dark:border-gray-700">
-        <div className="text-xl sm:text-2xl font-bold text-blue-600 dark:text-blue-400">
+    <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 text-center">
+      <div className="bg-white dark:bg-gray-800 rounded-lg p-3 sm:p-4 border border-gray-200 dark:border-gray-700 min-h-[80px] flex flex-col justify-center">
+        <div className="text-lg sm:text-xl font-bold text-blue-600 dark:text-blue-400 leading-tight">
           {stats.moves}
         </div>
-        <div className="text-xs text-gray-500 dark:text-gray-400">Moves</div>
+        <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">Moves</div>
       </div>
-      <div className="bg-white dark:bg-gray-800 rounded-lg p-2 sm:p-3 border border-gray-200 dark:border-gray-700">
-        <div className="text-xl sm:text-2xl font-bold text-green-600 dark:text-green-400">
+      <div className="bg-white dark:bg-gray-800 rounded-lg p-3 sm:p-4 border border-gray-200 dark:border-gray-700 min-h-[80px] flex flex-col justify-center">
+        <div className="text-lg sm:text-xl font-bold text-green-600 dark:text-green-400 leading-tight">
           {stats.duration}
         </div>
-        <div className="text-xs text-gray-500 dark:text-gray-400">Duration</div>
+        <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">Duration</div>
       </div>
-      <div className="bg-white dark:bg-gray-800 rounded-lg p-2 sm:p-3 border border-gray-200 dark:border-gray-700">
-        <div className="text-base sm:text-lg font-bold text-purple-600 dark:text-purple-400 capitalize">
-          {stats.difficulty}
+      <div className="bg-white dark:bg-gray-800 rounded-lg p-3 sm:p-4 border border-gray-200 dark:border-gray-700 min-h-[80px] flex flex-col justify-center">
+        <div className="text-sm sm:text-base font-bold text-purple-600 dark:text-purple-400 leading-tight break-words">
+          {stats.gameMode}
         </div>
-        <div className="text-xs text-gray-500 dark:text-gray-400">Difficulty</div>
+        <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">Mode</div>
       </div>
-      <div className="bg-white dark:bg-gray-800 rounded-lg p-2 sm:p-3 border border-gray-200 dark:border-gray-700">
-        <div className="text-base sm:text-lg font-bold text-orange-600 dark:text-orange-400">
-          {stats.currentPlayer === 'HUMAN' ? 'You' : 'AI'}
+      <div className="bg-white dark:bg-gray-800 rounded-lg p-3 sm:p-4 border border-gray-200 dark:border-gray-700 min-h-[80px] flex flex-col justify-center">
+        <div className="text-sm sm:text-base font-bold text-orange-600 dark:text-orange-400 leading-tight break-words">
+          {stats.currentPlayer}
         </div>
-        <div className="text-xs text-gray-500 dark:text-gray-400">Current Turn</div>
+        <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">Current Turn</div>
       </div>
     </div>
   )
@@ -104,6 +130,8 @@ export default function GamePage() {
     gameState,
     makeMove,
     startNewGame,
+    startMultiplayerGame,
+    makeMultiplayerMove,
     pauseGame,
     resumeGame,
     resetGame,
@@ -136,13 +164,22 @@ export default function GamePage() {
   // Show celebration when game is won
   useEffect(() => {
     const convertedStatus = convertGameStatus(gameState.status)
-    if ((convertedStatus === GameStatus.PLAYER_WON || convertedStatus === GameStatus.AI_WON) && !showCelebration) {
+    if ((convertedStatus === GameStatus.PLAYER_WON ||
+         convertedStatus === GameStatus.AI_WON ||
+         convertedStatus === GameStatus.PLAYER_1_WON ||
+         convertedStatus === GameStatus.PLAYER_2_WON) && !showCelebration) {
       setShowCelebration(true)
     }
   }, [gameState.status, showCelebration])
 
-  // Handle AI moves
+  // Handle AI moves (only for single player mode)
   useEffect(() => {
+    if (gameState.gameMode === 'MULTIPLAYER') {
+      // In multiplayer mode, AI is not used
+      setBoardDisabled(false)
+      return
+    }
+
     if (gameState.status === 'IN_PROGRESS' &&
         gameState.currentPlayer === 'AI' &&
         !isAIThinking) {
@@ -213,58 +250,109 @@ export default function GamePage() {
     } else {
       setBoardDisabled(isAIThinking)
     }
-  }, [gameState.status, gameState.currentPlayer, isAIThinking, getAIMove, makeMove, gameState.board, gameState.aiDisc, gameState.playerDisc, gameState.difficulty])
+  }, [gameState.gameMode, gameState.status, gameState.currentPlayer, isAIThinking, getAIMove, makeMove, gameState.board, gameState.aiDisc, gameState.playerDisc, gameState.difficulty])
 
   // Handle column interactions with validation and error handling
   const handleColumnClick = useCallback(async (column: number) => {
-    if (gameState.status !== 'IN_PROGRESS' ||
-        gameState.currentPlayer !== 'HUMAN' ||
-        isAIThinking) {
+    if (gameState.status !== 'IN_PROGRESS' || isAIThinking) {
+      return
+    }
+
+    // Check if it's a valid turn for the current player
+    const isHumanTurn = gameState.currentPlayer === 'HUMAN'
+    const isPlayer1Turn = gameState.currentPlayer === 'PLAYER_1'
+    const isPlayer2Turn = gameState.currentPlayer === 'PLAYER_2'
+
+    if (!isHumanTurn && !isPlayer1Turn && !isPlayer2Turn) {
       return
     }
 
     try {
-      // Validate the move
-      const validation = validateMove({
-        column,
-        board: gameState.board,
-        playerDisc: gameState.playerDisc,
-        gameStatus: gameState.status,
-        isPlayerTurn: gameState.currentPlayer === 'HUMAN'
-      })
+      // For multiplayer games, validate differently
+      if (gameState.gameMode === 'MULTIPLAYER') {
+        if (!gameState.currentPlayerInfo) {
+          console.warn('No current player info available for multiplayer game')
+          return
+        }
 
-      if (!validation.isValid) {
-        // Show validation errors as warnings
-        validation.errors.forEach(error => {
-          console.warn(`Invalid Move: ${error}`)
-          logger.warn('validation', `Invalid move attempt: ${error}`, [
-                `Column: ${column}`,
-                `Validation: ${JSON.stringify(validation)}`
-              ])
+        // Validate multiplayer move
+        const validation = validateMove({
+          column,
+          board: gameState.board,
+          playerDisc: gameState.currentPlayerInfo.discColor,
+          gameStatus: gameState.status,
+          isPlayerTurn: true // In multiplayer, human players always make moves
         })
-        return
-      }
 
-      // Show validation warnings
-      if (validation.warnings && validation.warnings.length > 0) {
-        validation.warnings.forEach(warning => {
-          console.log(`Strategy Tip: ${warning}`)
+        if (!validation.isValid) {
+          validation.errors.forEach(error => {
+            console.warn(`Invalid Move: ${error}`)
+            logger.warn('validation', `Invalid multiplayer move attempt: ${error}`, [
+              `Column: ${column}`,
+              `Player: ${gameState.currentPlayerInfo?.name || 'Unknown'}`,
+              `Validation: ${JSON.stringify(validation)}`
+            ])
+          })
+          return
+        }
+
+        // Log the multiplayer move attempt
+        logger.info('move', `Player ${gameState.currentPlayerInfo?.name || 'Unknown'} attempting move in column ${column}`, [
+          `Column: ${column}`,
+          `Game state: ${gameState.status}`,
+          `Move count: ${gameState.moves.length}`
+        ])
+
+        // Make the multiplayer move
+        const moveTimer = logger.startTimer('multiplayer_move')
+        if (gameState.currentPlayerInfo) {
+          await makeMultiplayerMove(column, gameState.currentPlayerInfo)
+        }
+        moveTimer()
+
+        logger.info('move', `Player ${gameState.currentPlayerInfo?.name || 'Unknown'} successfully moved in column ${column}`, [])
+      } else {
+        // Single player game
+        const validation = validateMove({
+          column,
+          board: gameState.board,
+          playerDisc: gameState.playerDisc,
+          gameStatus: gameState.status,
+          isPlayerTurn: gameState.currentPlayer === 'HUMAN'
         })
+
+        if (!validation.isValid) {
+          validation.errors.forEach(error => {
+            console.warn(`Invalid Move: ${error}`)
+            logger.warn('validation', `Invalid move attempt: ${error}`, [
+              `Column: ${column}`,
+              `Validation: ${JSON.stringify(validation)}`
+            ])
+          })
+          return
+        }
+
+        // Show validation warnings
+        if (validation.warnings && validation.warnings.length > 0) {
+          validation.warnings.forEach(warning => {
+            console.log(`Strategy Tip: ${warning}`)
+          })
+        }
+
+        // Log the move attempt
+        logger.info('move', `Player attempting move in column ${column}`, [
+          `Column: ${column}`,
+          `Game state: ${gameState.status}`,
+          `Move count: ${gameState.moves.length}`
+        ])
+
+        // Make the move with timing
+        const moveTimer = logger.startTimer('player_move')
+        await makeMove(column)
+        moveTimer()
+
+        logger.info('move', `Player successfully moved in column ${column}`, [])
       }
-
-      // Log the move attempt
-      logger.info('move', `Player attempting move in column ${column}`, [
-        `Column: ${column}`,
-        `Game state: ${gameState.status}`,
-        `Move count: ${gameState.moves.length}`
-      ])
-
-      // Make the move with timing
-      const moveTimer = logger.startTimer('player_move')
-      await makeMove(column)
-      moveTimer()
-
-      logger.info('move', `Player successfully moved in column ${column}`, [])
 
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred'
@@ -272,7 +360,7 @@ export default function GamePage() {
       console.error('Move Failed: Unable to complete your move. Please try again.')
       handleError(error, 'game-state')
     }
-  }, [gameState.status, gameState.currentPlayer, isAIThinking, makeMove, gameState.board, gameState.playerDisc, logger, handleError])
+  }, [gameState.status, gameState.currentPlayer, gameState.gameMode, gameState.currentPlayerInfo, isAIThinking, makeMove, makeMultiplayerMove, gameState.board, gameState.playerDisc, logger, handleError])
 
   const handleColumnHover = useCallback((_column: number) => {
     // Handle hover preview logic here if needed
@@ -340,10 +428,20 @@ export default function GamePage() {
     setShowCelebration(false)
   }, [])
 
-  // Handle starting a new game with selected difficulty
-  const handleStartGame = useCallback((difficulty: 'easy' | 'medium' | 'hard') => {
+  // Handle starting a new single player game
+  const handleStartSinglePlayer = useCallback((difficulty: 'easy' | 'medium' | 'hard') => {
     startNewGame(difficulty, 'red')
   }, [startNewGame])
+
+  // Handle starting a new multiplayer game
+  const handleStartMultiplayer = useCallback((players: PlayerInfo[]) => {
+    startMultiplayerGame(players)
+  }, [startMultiplayerGame])
+
+  // Handle showing game history
+  const handleShowHistory = useCallback(() => {
+    window.location.href = '/history'
+  }, [])
 
   // Settings functionality commented out for now
   // const handleSettings = useCallback(() => {
@@ -447,7 +545,7 @@ export default function GamePage() {
           gameStatus={convertGameStatus(gameState.status)}
           playerDisc={gameState.playerDisc}
           aiDisc={gameState.aiDisc}
-          winner={gameState.winner || null}
+          winner={convertWinnerForCelebration(gameState.winner)}
           onAnimationComplete={handleCelebrationComplete}
         />
       )}
@@ -506,30 +604,15 @@ export default function GamePage() {
               {/* Start Game Overlay */}
               {convertGameStatus(gameState.status) === GameStatus.NOT_STARTED && (
                 <div className="absolute inset-0 bg-black bg-opacity-50 rounded-xl flex items-center justify-center">
-                  <div className="text-center text-white p-6">
+                  <div className="text-center text-white p-6 w-full max-w-md">
                     <div className="text-4xl mb-4">🎮</div>
-                    <h3 className="text-xl font-bold mb-2">Ready to Play?</h3>
-                    <p className="text-gray-300 mb-4">Select a difficulty to start the game!</p>
-                    <div className="flex flex-col sm:flex-row gap-3 justify-center">
-                      <button
-                        onClick={() => handleStartGame('easy')}
-                        className="px-4 py-2 bg-green-500 hover:bg-green-600 rounded-lg font-semibold transition-colors"
-                      >
-                        Easy
-                      </button>
-                      <button
-                        onClick={() => handleStartGame('medium')}
-                        className="px-4 py-2 bg-blue-500 hover:bg-blue-600 rounded-lg font-semibold transition-colors"
-                      >
-                        Medium
-                      </button>
-                      <button
-                        onClick={() => handleStartGame('hard')}
-                        className="px-4 py-2 bg-red-500 hover:bg-red-600 rounded-lg font-semibold transition-colors"
-                      >
-                        Hard
-                      </button>
-                    </div>
+                    <h3 className="text-xl font-bold mb-2">Welcome to Connect Four!</h3>
+                    <p className="text-gray-300 mb-4">Choose your game mode to get started</p>
+                    <MainMenu
+                      onStartSinglePlayer={handleStartSinglePlayer}
+                      onStartMultiplayer={handleStartMultiplayer}
+                      disabled={isAIThinking}
+                    />
                   </div>
                 </div>
               )}
@@ -546,6 +629,8 @@ export default function GamePage() {
                 aiDisc={gameState.aiDisc}
                 isAIThinking={isAIThinking}
                 gameStatus={convertGameStatus(gameState.status)}
+                players={gameState.players || []}
+                {...(gameState.currentPlayerInfo && { currentPlayerInfo: gameState.currentPlayerInfo })}
               />
             </div>
 
@@ -568,7 +653,10 @@ export default function GamePage() {
                 onPause={handlePause}
                 onResume={handleResume}
                 onReset={handleReset}
-                onSettings={() => console.log('Settings clicked')}
+                onSettings={() => {
+                    // For now, show a toast or alert that settings are coming soon
+                    alert('Game settings will be available in a future update!')
+                  }}
                 disabled={isAIThinking}
               />
             </div>

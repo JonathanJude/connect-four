@@ -529,7 +529,7 @@ export function HistoryList({
 
     const query = searchQuery.toLowerCase()
     return (
-      game.difficulty.toLowerCase().includes(query) ||
+      game.difficulty?.toLowerCase().includes(query) ||
       game.winner?.toLowerCase().includes(query) ||
       game.id.toLowerCase().includes(query) ||
       game.status.toLowerCase().includes(query)
@@ -627,6 +627,8 @@ export function HistoryList({
         setGames([])
         setStats({
           totalGames: 0,
+          singlePlayerGames: 0,
+          multiplayerGames: 0,
           wins: 0,
           losses: 0,
           draws: 0,
@@ -637,6 +639,10 @@ export function HistoryList({
             easy: { games: 0, wins: 0, losses: 0, draws: 0 },
             medium: { games: 0, wins: 0, losses: 0, draws: 0 },
             hard: { games: 0, wins: 0, losses: 0, draws: 0 },
+          },
+          gameModeBreakdown: {
+            singlePlayer: { games: 0, wins: 0, losses: 0, draws: 0 },
+            multiplayer: { games: 0, player1Wins: 0, player2Wins: 0, draws: 0 },
           },
           recentPerformance: [],
         })

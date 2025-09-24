@@ -30,26 +30,20 @@ class GameHistoryEntryImpl implements GameHistoryEntry {
     public id: string,
     public playerId: string,
     public playerDisc: 'red' | 'yellow',
-    public aiDisc: 'red' | 'yellow',
-    public difficulty: 'easy' | 'medium' | 'hard',
-    public status: 'IN_PROGRESS' | 'PLAYER_WON' | 'AI_WON' | 'DRAW',
-    public winner: 'HUMAN' | 'AI' | 'DRAW' | null,
+    public aiDisc?: 'red' | 'yellow',
+    public difficulty?: 'easy' | 'medium' | 'hard',
+    public status?: 'IN_PROGRESS' | 'PLAYER_WON' | 'AI_WON' | 'DRAW' | 'PLAYER_1_WON' | 'PLAYER_2_WON',
+    public winner?: 'HUMAN' | 'AI' | 'PLAYER_1' | 'PLAYER_2' | 'DRAW' | null,
     public moves: Array<{
-      player: 'HUMAN' | 'AI'
+      player: 'HUMAN' | 'AI' | 'PLAYER_1' | 'PLAYER_2'
       position: { row: number; col: number }
       timestamp: number
       boardState: any
-    }>,
-    public duration: number,
-    public createdAt: Date,
-    public completedAt: Date | null,
-    public metadata?: {
-      aiThinkTime?: number
-      playerThinkTime?: number
-      boardState?: any
-      winningLine?: Array<{ row: number; col: number }>
-      [key: string]: any
-    }
+    }> = [],
+    public duration: number = 0,
+    public createdAt: Date = new Date(),
+    public completedAt: Date | null = null,
+    public metadata?: any
   ) {}
 
   /**
@@ -66,6 +60,8 @@ class GameHistoryEntryImpl implements GameHistoryEntry {
     switch (this.winner) {
       case 'HUMAN': return 'Win'
       case 'AI': return 'Loss'
+      case 'PLAYER_1': return 'Player 1 Wins'
+      case 'PLAYER_2': return 'Player 2 Wins'
       case 'DRAW': return 'Draw'
       default: return 'In Progress'
     }
@@ -308,55 +304,8 @@ export class HistoryService implements GameHistory {
 
       const stats: GameHistoryStats = {
         totalGames: history.length,
-        wins: history.filter(g => g.winner === 'HUMAN').length,
-        losses: history.filter(g => g.winner === 'AI').length,
-        draws: history.filter(g => g.winner === 'DRAW').length,
-        winRate: 0,
-        averageMoves: 0,
-        averageDuration: 0,
-        difficultyBreakdown: {
-          easy: { games: 0, wins: 0, losses: 0, draws: 0 },
-          medium: { games: 0, wins: 0, losses: 0, draws: 0 },
-          hard: { games: 0, wins: 0, losses: 0, draws: 0 },
-        },
-        recentPerformance: [],
-      }
-
-      if (stats.totalGames === 0) {
-        return stats
-      }
-
-      // Calculate overall stats
-      stats.winRate = (stats.wins / stats.totalGames) * 100
-      stats.averageMoves = history.reduce((sum, g) => sum + g.moves.length, 0) / stats.totalGames
-      stats.averageDuration = history.reduce((sum, g) => sum + g.duration, 0) / stats.totalGames
-
-      // Calculate difficulty breakdown
-      history.forEach(game => {
-        const difficulty = game.difficulty
-        stats.difficultyBreakdown[difficulty].games++
-
-        if (game.winner === 'HUMAN') stats.difficultyBreakdown[difficulty].wins++
-        else if (game.winner === 'AI') stats.difficultyBreakdown[difficulty].losses++
-        else if (game.winner === 'DRAW') stats.difficultyBreakdown[difficulty].draws++
-      })
-
-      // Calculate recent performance (last 10 games)
-      const recentGames = history.slice(0, 10).reverse()
-      stats.recentPerformance = recentGames.map((game, index) => ({
-        gameIndex: index + 1,
-        result: game.winner || 'DRAW',
-        difficulty: game.difficulty,
-        moves: game.moves.length,
-        duration: game.duration,
-        date: new Date(game.createdAt),
-      }))
-
-      return stats
-    } catch (error) {
-      console.error('Failed to get history stats:', error)
-      return {
-        totalGames: 0,
+        singlePlayerGames: 0,
+        multiplayerGames: 0,
         wins: 0,
         losses: 0,
         draws: 0,
@@ -367,6 +316,119 @@ export class HistoryService implements GameHistory {
           easy: { games: 0, wins: 0, losses: 0, draws: 0 },
           medium: { games: 0, wins: 0, losses: 0, draws: 0 },
           hard: { games: 0, wins: 0, losses: 0, draws: 0 },
+        },
+        gameModeBreakdown: {
+          singlePlayer: {
+            games: 0,
+            wins: 0,
+            losses: 0,
+            draws: 0,
+          },
+          multiplayer: {
+            games: 0,
+            player1Wins: 0,
+            player2Wins: 0,
+            draws: 0,
+          },
+        },
+        recentPerformance: [],
+      }
+
+      if (stats.totalGames === 0) {
+        return stats
+      }
+
+      // Calculate game mode breakdown and basic stats
+      history.forEach(game => {
+        const isMultiplayer = game.metadata?.gameMode === 'MULTIPLAYER'
+
+        if (isMultiplayer) {
+          stats.multiplayerGames++
+          stats.gameModeBreakdown.multiplayer.games++
+
+          if (game.winner === 'PLAYER_1') {
+            stats.gameModeBreakdown.multiplayer.player1Wins++
+          } else if (game.winner === 'PLAYER_2') {
+            stats.gameModeBreakdown.multiplayer.player2Wins++
+          } else if (game.winner === 'DRAW') {
+            stats.gameModeBreakdown.multiplayer.draws++
+            stats.draws++
+          }
+        } else {
+          stats.singlePlayerGames++
+          stats.gameModeBreakdown.singlePlayer.games++
+
+          if (game.winner === 'HUMAN') {
+            stats.wins++
+            stats.gameModeBreakdown.singlePlayer.wins++
+          } else if (game.winner === 'AI') {
+            stats.losses++
+            stats.gameModeBreakdown.singlePlayer.losses++
+          } else if (game.winner === 'DRAW') {
+            stats.draws++
+            stats.gameModeBreakdown.singlePlayer.draws++
+          }
+        }
+
+        // Calculate difficulty breakdown (only for single player games)
+        const difficulty = game.difficulty
+        if (difficulty && !isMultiplayer) {
+          stats.difficultyBreakdown[difficulty].games++
+
+          if (game.winner === 'HUMAN') stats.difficultyBreakdown[difficulty].wins++
+          else if (game.winner === 'AI') stats.difficultyBreakdown[difficulty].losses++
+          else if (game.winner === 'DRAW') stats.difficultyBreakdown[difficulty].draws++
+        }
+      })
+
+      // Calculate overall stats
+      stats.winRate = stats.singlePlayerGames > 0 ? (stats.wins / stats.singlePlayerGames) * 100 : 0
+      stats.averageMoves = history.reduce((sum, g) => sum + g.moves.length, 0) / stats.totalGames
+      stats.averageDuration = history.reduce((sum, g) => sum + g.duration, 0) / stats.totalGames
+
+      // Calculate recent performance (last 10 games)
+      const recentGames = history.slice(0, 10).reverse()
+      stats.recentPerformance = recentGames.map((game, index) => ({
+        gameIndex: index + 1,
+        result: game.winner || 'DRAW',
+        difficulty: game.difficulty,
+        gameMode: game.metadata?.gameMode || 'SINGLE_PLAYER',
+        moves: game.moves.length,
+        duration: game.duration,
+        date: new Date(game.createdAt),
+      }))
+
+      return stats
+    } catch (error) {
+      console.error('Failed to get history stats:', error)
+      return {
+        totalGames: 0,
+        singlePlayerGames: 0,
+        multiplayerGames: 0,
+        wins: 0,
+        losses: 0,
+        draws: 0,
+        winRate: 0,
+        averageMoves: 0,
+        averageDuration: 0,
+        difficultyBreakdown: {
+          easy: { games: 0, wins: 0, losses: 0, draws: 0 },
+          medium: { games: 0, wins: 0, losses: 0, draws: 0 },
+          hard: { games: 0, wins: 0, losses: 0, draws: 0 },
+        },
+        gameModeBreakdown: {
+          singlePlayer: {
+            games: 0,
+            wins: 0,
+            losses: 0,
+            draws: 0,
+          },
+          multiplayer: {
+            games: 0,
+            player1Wins: 0,
+            player2Wins: 0,
+            draws: 0,
+          },
         },
         recentPerformance: [],
       }
@@ -505,6 +567,10 @@ export class HistoryService implements GameHistory {
       filtered = filtered.filter(game => game.difficulty === filter.difficulty)
     }
 
+    if (filter.gameMode) {
+      filtered = filtered.filter(game => game.metadata?.gameMode === filter.gameMode)
+    }
+
     if (filter.winner) {
       filtered = filtered.filter(game => game.winner === filter.winner)
     }
@@ -573,6 +639,7 @@ export class HistoryService implements GameHistory {
       'ID',
       'Date',
       'Duration',
+      'Game Mode',
       'Difficulty',
       'Player Disc',
       'AI Disc',
@@ -586,18 +653,37 @@ export class HistoryService implements GameHistory {
       game.id,
       new Date(game.createdAt).toISOString(),
       game.duration,
-      game.difficulty,
+      game.metadata?.gameMode || 'SINGLE_PLAYER',
+      game.difficulty || '',
       game.playerDisc,
-      game.aiDisc,
+      game.aiDisc || '',
       game.status,
       game.winner || '',
       game.moves.length,
-      game.winner === 'HUMAN' ? 'Win' : game.winner === 'AI' ? 'Loss' : game.winner === 'DRAW' ? 'Draw' : '',
+      this.getGameResultForCSV(game.winner, game.metadata?.gameMode),
     ])
 
     return [headers, ...rows]
       .map(row => row.map(cell => `"${cell}"`).join(','))
       .join('\n')
+  }
+
+  private getGameResultForCSV(winner: string, gameMode: string): string {
+    if (gameMode === 'MULTIPLAYER') {
+      switch (winner) {
+        case 'PLAYER_1': return 'Player 1 Wins'
+        case 'PLAYER_2': return 'Player 2 Wins'
+        case 'DRAW': return 'Draw'
+        default: return ''
+      }
+    } else {
+      switch (winner) {
+        case 'HUMAN': return 'Win'
+        case 'AI': return 'Loss'
+        case 'DRAW': return 'Draw'
+        default: return ''
+      }
+    }
   }
 }
 

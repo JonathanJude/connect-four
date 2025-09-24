@@ -18,14 +18,20 @@ import { historyService } from '@/lib/history/service'
 interface GameHistoryEntry {
   id: string
   playerDisc: DiscColor
-  aiDisc: DiscColor
-  difficulty: string
+  aiDisc?: DiscColor
+  difficulty?: string
   status: GameStatus
-  winner: 'HUMAN' | 'AI' | GameStatus.DRAW
+  winner: 'HUMAN' | 'AI' | 'PLAYER_1' | 'PLAYER_2' | 'DRAW'
   moves: number
   duration: number
   createdAt: Date
   completedAt?: Date
+  gameMode?: 'SINGLE_PLAYER' | 'MULTIPLAYER'
+  players?: Array<{
+    type: 'PLAYER_1' | 'PLAYER_2'
+    name: string
+    discColor: DiscColor
+  }>
 }
 
 /**
@@ -43,6 +49,8 @@ function convertToDisplayFormat(historyData: any[]): GameHistoryEntry[] {
       moves: game.moves.length,
       duration: game.duration,
       createdAt: new Date(game.createdAt),
+      gameMode: game.metadata?.gameMode,
+      players: game.metadata?.players,
     }
 
     if (game.completedAt) {
@@ -57,40 +65,55 @@ function convertToDisplayFormat(historyData: any[]): GameHistoryEntry[] {
  * Game Card Component
  */
 function GameCard({ game, onViewReplay }: { game: GameHistoryEntry; onViewReplay: (id: string) => void }) {
+  const getPlayerDisplayName = (playerType: string) => {
+    if (playerType === 'HUMAN') return 'You'
+    if (playerType === 'AI') return 'AI'
+    if (playerType === 'PLAYER_1' || playerType === 'PLAYER_2') {
+      const player = game.players?.find(p => p.type === playerType)
+      return player?.name || playerType.replace('_', ' ')
+    }
+    return playerType
+  }
+
   const getResultIcon = () => {
+    if (game.winner === 'DRAW') return '🤝'
+    if (game.gameMode === 'MULTIPLAYER' && (game.winner === 'PLAYER_1' || game.winner === 'PLAYER_2')) return '🎉'
     switch (game.winner) {
       case 'HUMAN':
         return '🎉'
       case 'AI':
         return '🤖'
-      case GameStatus.DRAW:
-        return '🤝'
       default:
         return '❓'
     }
   }
 
   const getResultText = () => {
+    if (game.winner === 'DRAW') return 'Draw'
+    if (game.gameMode === 'MULTIPLAYER' && (game.winner === 'PLAYER_1' || game.winner === 'PLAYER_2')) {
+      const winnerName = getPlayerDisplayName(game.winner)
+      return `${winnerName} Won!`
+    }
     switch (game.winner) {
       case 'HUMAN':
         return 'You Won!'
       case 'AI':
         return 'AI Won'
-      case GameStatus.DRAW:
-        return 'Draw'
       default:
         return 'Unknown'
     }
   }
 
   const getResultColor = () => {
+    if (game.winner === 'DRAW') return 'text-yellow-600 dark:text-yellow-400 bg-yellow-100 dark:bg-yellow-900/30'
+    if (game.gameMode === 'MULTIPLAYER' && (game.winner === 'PLAYER_1' || game.winner === 'PLAYER_2')) {
+      return 'text-green-600 dark:text-green-400 bg-green-100 dark:bg-green-900/30'
+    }
     switch (game.winner) {
       case 'HUMAN':
         return 'text-green-600 dark:text-green-400 bg-green-100 dark:bg-green-900/30'
       case 'AI':
         return 'text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-900/30'
-      case GameStatus.DRAW:
-        return 'text-yellow-600 dark:text-yellow-400 bg-yellow-100 dark:bg-yellow-900/30'
       default:
         return 'text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-800'
     }
@@ -127,23 +150,47 @@ function GameCard({ game, onViewReplay }: { game: GameHistoryEntry; onViewReplay
               {getResultText()}
             </div>
             <div className="flex items-center space-x-2">
-              <div className={cn(
-                'w-4 h-4 rounded-full',
-                game.playerDisc === 'red' ? 'bg-red-500' : 'bg-yellow-400'
-              )} />
-              <span className="text-sm text-gray-600 dark:text-gray-400">vs</span>
-              <div className={cn(
-                'w-4 h-4 rounded-full',
-                game.aiDisc === 'red' ? 'bg-red-500' : 'bg-yellow-400'
-              )} />
+              {game.gameMode === 'MULTIPLAYER' && game.players ? (
+                <>
+                  <div className={cn(
+                    'w-4 h-4 rounded-full',
+                    game.players[0]?.discColor === 'red' ? 'bg-red-500' : 'bg-yellow-400'
+                  )} />
+                  <span className="text-sm text-gray-600 dark:text-gray-400">vs</span>
+                  <div className={cn(
+                    'w-4 h-4 rounded-full',
+                    game.players[1]?.discColor === 'red' ? 'bg-red-500' : 'bg-yellow-400'
+                  )} />
+                </>
+              ) : (
+                <>
+                  <div className={cn(
+                    'w-4 h-4 rounded-full',
+                    game.playerDisc === 'red' ? 'bg-red-500' : 'bg-yellow-400'
+                  )} />
+                  <span className="text-sm text-gray-600 dark:text-gray-400">vs</span>
+                  <div className={cn(
+                    'w-4 h-4 rounded-full',
+                    game.aiDisc === 'red' ? 'bg-red-500' : 'bg-yellow-400'
+                  )} />
+                </>
+              )}
             </div>
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
             <div>
-              <div className="text-gray-500 dark:text-gray-400">Difficulty</div>
-              <div className="font-medium capitalize">{game.difficulty}</div>
+              <div className="text-gray-500 dark:text-gray-400">Mode</div>
+              <div className="font-medium">
+                {game.gameMode === 'MULTIPLAYER' ? 'Multiplayer' : 'Single Player'}
+              </div>
             </div>
+            {game.gameMode === 'SINGLE_PLAYER' && (
+              <div>
+                <div className="text-gray-500 dark:text-gray-400">Difficulty</div>
+                <div className="font-medium capitalize">{game.difficulty || 'Unknown'}</div>
+              </div>
+            )}
             <div>
               <div className="text-gray-500 dark:text-gray-400">Moves</div>
               <div className="font-medium">{game.moves}</div>
@@ -152,7 +199,7 @@ function GameCard({ game, onViewReplay }: { game: GameHistoryEntry; onViewReplay
               <div className="text-gray-500 dark:text-gray-400">Duration</div>
               <div className="font-medium">{formatDuration(game.duration)}</div>
             </div>
-            <div>
+            <div className={game.gameMode === 'SINGLE_PLAYER' ? 'sm:col-span-2' : 'col-span-2'}>
               <div className="text-gray-500 dark:text-gray-400">Date</div>
               <div className="font-medium">{formatDate(game.createdAt)}</div>
             </div>
@@ -185,10 +232,12 @@ function GameCard({ game, onViewReplay }: { game: GameHistoryEntry; onViewReplay
 function StatsSummary({ games }: { games: GameHistoryEntry[] }) {
   const stats = {
     total: games.length,
-    wins: games.filter(g => g.winner === 'HUMAN').length,
+    singlePlayerGames: games.filter(g => g.gameMode === 'SINGLE_PLAYER').length,
+    multiplayerGames: games.filter(g => g.gameMode === 'MULTIPLAYER').length,
+    wins: games.filter(g => g.winner === 'HUMAN' || g.winner === 'PLAYER_1' || g.winner === 'PLAYER_2').length,
     losses: games.filter(g => g.winner === 'AI').length,
-    draws: games.filter(g => g.winner === GameStatus.DRAW).length,
-    winRate: games.length > 0 ? (games.filter(g => g.winner === 'HUMAN').length / games.length * 100) : 0,
+    draws: games.filter(g => g.winner === 'DRAW').length,
+    winRate: games.length > 0 ? (games.filter(g => g.winner === 'HUMAN' || g.winner === 'PLAYER_1' || g.winner === 'PLAYER_2').length / games.length * 100) : 0,
     avgMoves: games.length > 0 ? games.reduce((sum, g) => sum + g.moves, 0) / games.length : 0,
     avgDuration: games.length > 0 ? games.reduce((sum, g) => sum + g.duration, 0) / games.length : 0,
   }
@@ -200,6 +249,18 @@ function StatsSummary({ games }: { games: GameHistoryEntry[] }) {
           {stats.total}
         </div>
         <div className="text-xs text-gray-500 dark:text-gray-400">Total Games</div>
+      </div>
+      <div className="bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700 text-center">
+        <div className="text-2xl font-bold text-indigo-600 dark:text-indigo-400">
+          {stats.singlePlayerGames}
+        </div>
+        <div className="text-xs text-gray-500 dark:text-gray-400">Single Player</div>
+      </div>
+      <div className="bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700 text-center">
+        <div className="text-2xl font-bold text-purple-600 dark:text-purple-400">
+          {stats.multiplayerGames}
+        </div>
+        <div className="text-xs text-gray-500 dark:text-gray-400">Multiplayer</div>
       </div>
       <div className="bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700 text-center">
         <div className="text-2xl font-bold text-green-600 dark:text-green-400">
@@ -218,18 +279,6 @@ function StatsSummary({ games }: { games: GameHistoryEntry[] }) {
           {stats.draws}
         </div>
         <div className="text-xs text-gray-500 dark:text-gray-400">Draws</div>
-      </div>
-      <div className="bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700 text-center">
-        <div className="text-xl font-bold text-purple-600 dark:text-purple-400">
-          {stats.winRate.toFixed(1)}%
-        </div>
-        <div className="text-xs text-gray-500 dark:text-gray-400">Win Rate</div>
-      </div>
-      <div className="bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700 text-center">
-        <div className="text-lg font-bold text-orange-600 dark:text-orange-400">
-          {Math.round(stats.avgMoves)}
-        </div>
-        <div className="text-xs text-gray-500 dark:text-gray-400">Avg Moves</div>
       </div>
     </div>
   )
@@ -303,14 +352,15 @@ export default function HistoryPage() {
   // Filter and search games
   const filteredGames = games.filter((game) => {
     const matchesFilter = filter === 'all' ||
-      (filter === 'wins' && game.winner === 'HUMAN') ||
+      (filter === 'wins' && (game.winner === 'HUMAN' || game.winner === 'PLAYER_1' || game.winner === 'PLAYER_2')) ||
       (filter === 'losses' && game.winner === 'AI') ||
-      (filter === 'draws' && game.winner === GameStatus.DRAW) ||
+      (filter === 'draws' && game.winner === 'DRAW') ||
       (filter === 'recent' && new Date(game.createdAt).getTime() > Date.now() - 7 * 24 * 60 * 60 * 1000)
 
     const matchesSearch = searchQuery === '' ||
-      game.difficulty.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      game.winner.toLowerCase().includes(searchQuery.toLowerCase())
+      (game.difficulty && game.difficulty.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      game.winner.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (game.gameMode && game.gameMode.toLowerCase().includes(searchQuery.toLowerCase()))
 
     return matchesFilter && matchesSearch
   })

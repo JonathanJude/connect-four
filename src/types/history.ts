@@ -1,5 +1,6 @@
-import type { DiscColor, Difficulty, Player } from '@/lib/game/constants'
+import type { DiscColor, Difficulty, Player, GameMode } from '@/lib/game/constants'
 import type { GameStatus } from '@/types/game'
+import type { PlayerInfo } from './game'
 
 export interface GameHistoryMove {
   player: Player
@@ -12,21 +13,33 @@ export interface GameHistoryMove {
   }
 }
 
+export interface MultiplayerGameMetadata {
+  gameMode: 'MULTIPLAYER'
+  players: PlayerInfo[]
+  playerThinkTimes?: Record<string, number>
+}
+
+export interface SinglePlayerGameMetadata {
+  gameMode: 'SINGLE_PLAYER'
+  aiThinkTime?: number
+  playerThinkTime?: number
+}
+
+export type GameMetadata = MultiplayerGameMetadata | SinglePlayerGameMetadata
+
 export interface GameHistoryEntry {
   id: string
   playerId: string
   playerDisc: DiscColor
-  aiDisc: DiscColor
-  difficulty: Difficulty
+  aiDisc?: DiscColor // Optional for multiplayer games
+  difficulty?: Difficulty // Optional for multiplayer games
   status: GameStatus
   winner: Player | 'DRAW' | null
   moves: GameHistoryMove[]
   duration: number
   createdAt: Date
   completedAt: Date | null
-  metadata?: {
-    aiThinkTime?: number
-    playerThinkTime?: number
+  metadata?: GameMetadata & {
     boardState?: {
       rows: number
       columns: number
@@ -40,6 +53,7 @@ export interface GameHistoryEntry {
 export interface GameHistoryFilter {
   difficulty?: Difficulty
   winner?: Player | 'DRAW' | null | Array<Player | 'DRAW' | null>
+  gameMode?: GameMode
   dateFrom?: Date
   dateTo?: Date
   playerDisc?: DiscColor
@@ -52,6 +66,8 @@ export interface GameHistoryFilter {
 
 export interface GameHistoryStats {
   totalGames: number
+  singlePlayerGames: number
+  multiplayerGames: number
   wins: number
   losses: number
   draws: number
@@ -64,10 +80,25 @@ export interface GameHistoryStats {
     losses: number
     draws: number
   }>
+  gameModeBreakdown: {
+    singlePlayer: {
+      games: number
+      wins: number
+      losses: number
+      draws: number
+    }
+    multiplayer: {
+      games: number
+      player1Wins: number
+      player2Wins: number
+      draws: number
+    }
+  }
   recentPerformance: Array<{
     gameIndex: number
     result: Player | 'DRAW' | null
-    difficulty: Difficulty
+    difficulty?: Difficulty
+    gameMode: GameMode
     moves: number
     duration: number
     date: Date

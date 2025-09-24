@@ -551,3 +551,7 @@ TypeScript 5.0+: Follow standard conventions
 
 <!-- MANUAL ADDITIONS START -->
 <!-- MANUAL ADDITIONS END -->
+
+## IMPORTANT
+
+- DO NOT run `npm run build`
