@@ -17,8 +17,7 @@
     "ecmaFeatures": {
       "jsx": true
     },
-    "project": "./tsconfig.json",
-    "tsconfigRootDir": "/Users/jude/Documents/MY_WORK/GamesLand/connect-four"
+    "project": "./tsconfig.json"
   },
   "plugins": ["@typescript-eslint", "react", "react-hooks", "jsx-a11y", "import"],
   "rules": {
