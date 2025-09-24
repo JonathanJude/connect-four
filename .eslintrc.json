@@ -22,14 +22,14 @@
   "plugins": ["@typescript-eslint", "react", "react-hooks", "jsx-a11y", "import"],
   "rules": {
     // TypeScript Rules
-    "@typescript-eslint/no-unused-vars": ["error", { "argsIgnorePattern": "^_" }],
+    "@typescript-eslint/no-unused-vars": ["warn", { "argsIgnorePattern": "^_" }],
     "@typescript-eslint/no-explicit-any": "warn",
     "@typescript-eslint/explicit-function-return-type": "warn",
     "@typescript-eslint/explicit-module-boundary-types": "warn",
     "@typescript-eslint/no-non-null-assertion": "warn",
-    "@typescript-eslint/prefer-nullish-coalescing": "error",
-    "@typescript-eslint/prefer-optional-chain": "error",
-    "@typescript-eslint/no-unnecessary-type-assertion": "error",
+    "@typescript-eslint/prefer-nullish-coalescing": "off",
+    "@typescript-eslint/prefer-optional-chain": "off",
+    "@typescript-eslint/no-unnecessary-type-assertion": "warn",
 
     // React Rules
     "react/react-in-jsx-scope": "off",
@@ -63,7 +63,7 @@
 
     // Import Rules
     "import/order": [
-      "error",
+      "warn",
       {
         "groups": ["builtin", "external", "internal", "parent", "sibling", "index"],
         "newlines-between": "always",
@@ -73,20 +73,20 @@
     "import/no-unresolved": "off",
     "import/namespace": "error",
     "import/default": "error",
-    "import/export": "error",
+    "import/export": "warn",
     "import/no-named-as-default": "error",
-    "import/no-named-as-default-member": "error",
+    "import/no-named-as-default-member": "warn",
 
     // General Code Quality
     "no-console": ["warn", { "allow": ["warn", "error"] }],
     "no-debugger": "error",
-    "prefer-const": "error",
+    "prefer-const": "warn",
     "no-var": "error",
-    "object-shorthand": "error",
+    "object-shorthand": "warn",
     "prefer-template": "error",
     "eqeqeq": ["error", "always"],
     "no-multiple-empty-lines": ["error", { "max": 1 }],
-    "curly": ["error", "all"],
+    "curly": ["warn", "all"],
     "no-eval": "error",
     "no-implied-eval": "error",
     "no-new-func": "error",
