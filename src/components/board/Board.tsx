@@ -216,14 +216,8 @@ export const Board = React.memo(function Board({
   }, [shouldShowHoverPreview, prefersReducedMotion])
 
   // Render column header (for accessibility)
-  const renderColumnHeader = (column: number) => {
-    if (process.env.NODE_ENV !== 'development') return null
-
-    return (
-      <div className="text-xs text-gray-500 text-center mb-1">
-        Col {column + 1}
-      </div>
-    )
+  const renderColumnHeader = (_column: number) => {
+    return null // Removed column labels as requested
   }
 
   // Board container classes - responsive sizing with victory animation

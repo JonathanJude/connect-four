@@ -188,13 +188,7 @@ export const Cell = React.memo(function Cell({
 
   // Cell position indicator (for debugging)
   const renderPositionIndicator = () => {
-    if (process.env.NODE_ENV !== 'development') return null
-
-    return (
-      <div className="absolute top-0 left-0 text-xs text-gray-400 opacity-50">
-        {row},{col}
-      </div>
-    )
+    return null // Removed coordinate labels as requested
   }
 
   return (

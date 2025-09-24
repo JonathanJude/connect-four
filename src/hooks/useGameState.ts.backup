@@ -1,0 +1,688 @@
+/**
+ * Game State Hook
+ * React hook for managing Connect Four game state with reducer-based state management
+ */
+
+'use client'
+
+import { useReducer, useEffect, useCallback, useRef, useState } from 'react'
+import {
+  type GameState,
+  type GameAction,
+  type GameSettings,
+  GameStatus,
+  type Player,
+  type Move,
+  createDefaultGameState,
+  generateGameId,
+  PERSISTENCE_KEYS,
+  DEFAULT_GAME_SETTINGS,
+} from '../types/game'
+import {
+  isValidMove,
+  applyMove,
+  checkWinner,
+} from '../lib/game/rules'
+import {
+  isBoardFull,
+  getValidMoves,
+} from '../lib/game/board'
+import {
+  type Board,
+  type DiscColor,
+} from '../lib/game/constants'
+import { aiService, type AIMoveRequest } from '../lib/ai/service'
+import { persistenceService } from '../lib/storage/service'
+import { historyService } from '../lib/history/service'
+import { type GameHistoryEntry } from '../types/history'
+
+/**
+ * Game reducer for state management
+ */
+function gameReducer(state: GameState, action: GameAction): GameState {
+  const currentTime = new Date()
+  const duration = currentTime.getTime() - state.createdAt.getTime()
+
+  switch (action.type) {
+    case 'START_GAME': {
+      return {
+        ...createDefaultGameState(),
+        id: generateGameId(),
+        status: GameStatus.IN_PROGRESS,
+        difficulty: action.payload.difficulty,
+        playerDisc: action.payload.playerDisc,
+        aiDisc: action.payload.playerDisc === 'red' ? 'yellow' : 'red',
+        createdAt: currentTime,
+      }
+    }
+
+    case 'MAKE_MOVE': {
+      if (state.status !== GameStatus.IN_PROGRESS || state.isPaused) {
+        return state
+      }
+
+      const column = action.payload.column
+      const move: Move = {
+        id: generateGameId(),
+        gameId: state.id,
+        player: 'HUMAN',
+        column,
+        row: 0, // Will be set by applyMove
+        timestamp: currentTime,
+      }
+
+      try {
+        console.log('🎯 PLAYER MOVE - Before applying move:', {
+          column,
+          boardState: state.board.grid.map(row => row.map(cell => cell || '.')).join('\n'),
+          playerDisc: state.playerDisc,
+          aiDisc: state.aiDisc
+        });
+        
+        const newBoard = applyMove(state.board, move, state.playerDisc, state.aiDisc)
+        
+        console.log('🎯 PLAYER MOVE - After applying move:', {
+          boardState: newBoard.grid.map(row => row.map(cell => cell || '.')).join('\n')
+        });
+        
+        // Create a temporary game state for winner checking
+        const tempGameState = {
+          ...state,
+          board: newBoard
+        }
+        
+        console.log('🔍 CHECKING WINNER after player move...');
+        const winner = checkWinner(tempGameState)
+        console.log('🔍 WINNER CHECK RESULT:', winner);
+        
+        console.log('🔍 CHECKING BOARD FULL...');
+        const boardFull = isBoardFull(newBoard);
+        console.log('🔍 BOARD FULL RESULT:', boardFull);
+        console.log('🔍 BOARD TOP ROW:', newBoard.grid[0]);
+        
+        const newStatus = winner?.winner
+          ? winner.winner === 'HUMAN'
+            ? GameStatus.PLAYER_WON
+            : GameStatus.AI_WON
+          : boardFull
+          ? GameStatus.DRAW
+          : GameStatus.IN_PROGRESS
+
+        console.log('🎯 STATUS CALCULATION:', {
+          hasWinner: !!winner?.winner,
+          winnerPlayer: winner?.winner,
+          boardFull,
+          finalStatus: newStatus
+        });
+
+        console.log('🎯 FINAL GAME STATUS:', newStatus);
+
+        return {
+          ...state,
+          board: newBoard,
+          status: newStatus,
+          currentPlayer: 'AI',
+          moves: [...state.moves, move],
+          winner: winner?.winner,
+          winningLine: winner?.line,
+          updatedAt: currentTime,
+          duration,
+        }
+      } catch (error) {
+        console.error('Invalid move:', error)
+        return state
+      }
+    }
+
+    case 'AI_MOVE': {
+      if (state.status !== GameStatus.IN_PROGRESS || state.isPaused) {
+        return state
+      }
+
+      const column = action.payload.column
+      const move: Move = {
+        id: generateGameId(),
+        gameId: state.id,
+        player: 'AI',
+        column,
+        row: 0, // Will be set by applyMove
+        timestamp: currentTime,
+      }
+
+      try {
+        const newBoard = applyMove(state.board, move, state.playerDisc, state.aiDisc)
+        
+        // Create a temporary game state for winner checking
+        const tempGameState = {
+          ...state,
+          board: newBoard
+        }
+        
+        const winner = checkWinner(tempGameState)
+        const newStatus = winner?.winner
+          ? winner.winner === 'HUMAN'
+            ? GameStatus.PLAYER_WON
+            : GameStatus.AI_WON
+          : isBoardFull(newBoard)
+          ? GameStatus.DRAW
+          : GameStatus.IN_PROGRESS
+
+        return {
+          ...state,
+          board: newBoard,
+          status: newStatus,
+          currentPlayer: 'HUMAN',
+          moves: [...state.moves, move],
+          winner: winner?.winner,
+          winningLine: winner?.line,
+          updatedAt: currentTime,
+          duration,
+        }
+      } catch (error) {
+        console.error('Invalid AI move:', error)
+        return state
+      }
+    }
+
+    case 'RESET_GAME': {
+      return {
+        ...createDefaultGameState(),
+        difficulty: state.difficulty,
+        playerDisc: state.playerDisc,
+        aiDisc: state.aiDisc,
+      }
+    }
+
+    case 'PAUSE_GAME': {
+      if (state.status !== GameStatus.IN_PROGRESS) {
+        return state
+      }
+      return {
+        ...state,
+        status: GameStatus.PAUSED,
+        isPaused: true,
+        updatedAt: currentTime,
+        duration,
+      }
+    }
+
+    case 'RESUME_GAME': {
+      if (state.status !== GameStatus.PAUSED) {
+        return state
+      }
+      return {
+        ...state,
+        status: GameStatus.IN_PROGRESS,
+        isPaused: false,
+        updatedAt: currentTime,
+        duration,
+      }
+    }
+
+    case 'UPDATE_SETTINGS': {
+      return {
+        ...state,
+        difficulty: action.payload.difficulty || state.difficulty,
+        playerDisc: action.payload.playerDisc || state.playerDisc,
+        aiDisc: action.payload.playerDisc
+          ? action.payload.playerDisc === 'red'
+            ? 'yellow'
+            : 'red'
+          : state.aiDisc,
+        updatedAt: currentTime,
+        duration,
+      }
+    }
+
+    case 'LOAD_GAME': {
+      return {
+        ...action.payload,
+        updatedAt: currentTime,
+        duration: currentTime.getTime() - action.payload.createdAt.getTime(),
+      }
+    }
+
+    case 'SET_HOVERED_COLUMN': {
+      // This action is for UI state, handled separately
+      return state
+    }
+
+    case 'SET_ANIMATION': {
+      // This action is for UI state, handled separately
+      return state
+    }
+
+    default:
+      return state
+  }
+}
+
+/**
+ * Hook return type
+ */
+export interface UseGameStateReturn {
+  // State
+  gameState: GameState
+  boardUIState: {
+    hoveredColumn: number | null
+    isAnimating: boolean
+    animationType: 'drop' | 'win' | 'none'
+    animationTarget?: { column: number; row: number }
+  }
+
+  // Actions
+  startNewGame: (difficulty: GameSettings['difficulty'], playerDisc: DiscColor) => void
+  makeMove: (column: number) => void
+  resetGame: () => void
+  pauseGame: () => void
+  resumeGame: () => void
+  updateSettings: (settings: Partial<GameSettings>) => void
+
+  // UI Actions
+  setHoveredColumn: (column: number | null) => void
+  startAnimation: (type: 'drop' | 'win', column?: number, row?: number) => void
+  endAnimation: () => void
+
+  // Computed values
+  isAIThinking: boolean
+  canPlayerMove: boolean
+  canPause: boolean
+  canResume: boolean
+  gameStats: {
+    totalMoves: number
+    duration: string
+    isValid: boolean
+  }
+
+  // Board helpers
+  isValidMove: (column: number) => boolean
+  getValidMoves: () => number[]
+  getCellOwner: (row: number, col: number) => Player | null
+  isLastMove: (row: number, col: number) => boolean
+  isWinningCell: (row: number, col: number) => boolean
+
+  // Game persistence
+  loadIncompleteGame: (gameId?: string) => Promise<boolean>
+}
+
+/**
+ * Custom hook for managing Connect Four game state
+ */
+export function useGameState(): UseGameStateReturn {
+  const [gameState, dispatch] = useReducer(gameReducer, createDefaultGameState())
+  const [boardUIState, setBoardUIState] = useState({
+    hoveredColumn: null as number | null,
+    isAnimating: false,
+    animationType: 'none' as 'drop' | 'win' | 'none',
+    animationTarget: undefined as { column: number; row: number } | undefined,
+  })
+
+  const aiTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const isAIThinkingRef = useRef(false)
+
+  // Load incomplete games from history
+  const loadIncompleteGame = useCallback(async (gameId?: string) => {
+    try {
+      const incompleteGames = await historyService.getIncompleteGames()
+      let gameToLoad
+
+      if (gameId) {
+        // Find specific game by ID
+        gameToLoad = incompleteGames.find(game => game.id === gameId)
+      } else {
+        // Load most recent game
+        gameToLoad = incompleteGames[0]
+      }
+
+      if (gameToLoad) {
+        const gameData = gameToLoad.metadata as any
+
+        const loadedState: GameState = {
+          id: gameData.id,
+          board: gameData.boardState || gameData.board,
+          status: gameData.status,
+          difficulty: gameToLoad.difficulty,
+          playerDisc: gameToLoad.playerDisc,
+          aiDisc: gameToLoad.aiDisc,
+          currentPlayer: gameData.currentPlayer,
+          isPaused: gameData.isPaused,
+          moves: gameToLoad.moves.map(move => ({
+            id: generateGameId(),
+            gameId: gameData.id,
+            player: move.player,
+            column: move.position?.col || 0,
+            row: move.position?.row || 0,
+            timestamp: new Date(move.timestamp || Date.now())
+          })),
+          winner: gameToLoad.winner === 'HUMAN' || gameToLoad.winner === 'AI' ? gameToLoad.winner : undefined,
+          winningLine: gameData.winningLine,
+          createdAt: new Date(Date.now() - gameToLoad.duration),
+          updatedAt: new Date(),
+          duration: gameToLoad.duration,
+        }
+
+        dispatch({ type: 'LOAD_GAME', payload: loadedState })
+        return true
+      }
+      return false
+    } catch (error) {
+      console.error('Failed to load incomplete game:', error)
+      return false
+    }
+  }, [])
+
+  // Load saved game on mount
+  useEffect(() => {
+    const loadSavedGame = async () => {
+      try {
+        const searchParams = new URLSearchParams(window.location.search)
+        const resumeGameId = searchParams.get('resume')
+
+        if (resumeGameId) {
+          console.log('Resuming game with ID:', resumeGameId)
+          const success = await loadIncompleteGame(resumeGameId)
+          if (success) {
+            // Clear the resume parameter from URL
+            const url = new URL(window.location.href)
+            url.searchParams.delete('resume')
+            window.history.replaceState({}, '', url.toString())
+          }
+        } else {
+          // Try to load most recent incomplete game
+          console.log('Attempting to load most recent incomplete game')
+          await loadIncompleteGame()
+        }
+      } catch (error) {
+        console.error('Failed to load saved game:', error)
+      }
+    }
+
+    loadSavedGame()
+  }, [loadIncompleteGame])
+
+  // Auto-save game state
+  useEffect(() => {
+    if (gameState.status !== 'NOT_STARTED') {
+      persistenceService.saveGame(gameState).catch(console.error)
+    }
+  }, [gameState])
+
+  // Handle AI moves
+  useEffect(() => {
+    console.log('=== AI EFFECT DEBUG ===');
+    console.log('Game status:', gameState.status);
+    console.log('Current player:', gameState.currentPlayer);
+    console.log('Is paused:', gameState.isPaused);
+    console.log('Is AI thinking:', isAIThinkingRef.current);
+    console.log('Game state object:', gameState);
+
+    if (
+      gameState.status === GameStatus.IN_PROGRESS &&
+      gameState.currentPlayer === 'AI' &&
+      !gameState.isPaused &&
+      !isAIThinkingRef.current
+    ) {
+      console.log('🤖 AI MOVE CONDITIONS MET - Starting AI move...');
+      isAIThinkingRef.current = true
+
+      const makeAIMove = async () => {
+        try {
+          console.log('🎯 Making AI move request...');
+          const aiRequest: AIMoveRequest = {
+            board: gameState.board,
+            playerDisc: gameState.aiDisc,
+            opponentDisc: gameState.playerDisc,
+            difficulty: gameState.difficulty,
+          }
+
+          console.log('AI Request:', aiRequest);
+          const aiResponse = await aiService.getBestMove(aiRequest)
+          console.log('AI Response:', aiResponse);
+
+          dispatch({
+            type: 'AI_MOVE',
+            payload: {
+              column: aiResponse.move,
+              thinkingTime: aiResponse.thinkingTime,
+            },
+          })
+          console.log('✅ AI move dispatched successfully');
+        } catch (error) {
+          console.error('❌ AI move failed:', error)
+          // Fallback to random move
+          const validMoves = getValidMoves(gameState.board)
+          if (validMoves.length > 0) {
+            const randomColumn = validMoves[Math.floor(Math.random() * validMoves.length)]
+            console.log('🎲 Using fallback random move:', randomColumn);
+            dispatch({
+              type: 'AI_MOVE',
+              payload: { column: randomColumn, thinkingTime: 0 },
+            })
+          }
+        } finally {
+          isAIThinkingRef.current = false
+        }
+      }
+
+      // Add small delay for better UX
+      console.log('⏱️ Setting AI move timeout...');
+      aiTimeoutRef.current = setTimeout(makeAIMove, 500)
+    } else {
+      console.log('❌ AI move conditions NOT met');
+      console.log('- Status check:', gameState.status === GameStatus.IN_PROGRESS);
+      console.log('- Player check:', gameState.currentPlayer === 'AI');
+      console.log('- Paused check:', !gameState.isPaused);
+      console.log('- AI thinking check:', !isAIThinkingRef.current);
+    }
+
+    return () => {
+      if (aiTimeoutRef.current) {
+        clearTimeout(aiTimeoutRef.current)
+      }
+    }
+  }, [gameState])
+
+  // Auto-save game to history on moves and completion
+  useEffect(() => {
+    const saveGameToHistory = async () => {
+      if (gameState.status === 'NOT_STARTED') return
+
+      try {
+        const gameData: Omit<GameHistoryEntry, 'id' | 'createdAt'> = {
+          playerId: 'default',
+          playerDisc: gameState.playerDisc,
+          aiDisc: gameState.aiDisc,
+          difficulty: gameState.difficulty,
+          status: gameState.status,
+          winner: gameState.winner || null,
+          moves: gameState.moves,
+          duration: gameState.duration,
+          completedAt: gameState.status !== 'IN_PROGRESS' && gameState.status !== 'PAUSED' ? new Date() : undefined,
+          metadata: {
+            id: gameState.id,
+            board: gameState.board,
+            currentPlayer: gameState.currentPlayer,
+            isPaused: gameState.isPaused,
+            winningLine: gameState.winningLine,
+          }
+        }
+
+        await historyService.saveGame(gameData)
+
+        // Cleanup completed games from persistence
+        if (gameState.status === 'PLAYER_WON' || gameState.status === 'AI_WON' || gameState.status === 'DRAW') {
+          await persistenceService.clearGame()
+        }
+      } catch (error) {
+        console.error('Failed to save game to history:', error)
+      }
+    }
+
+    saveGameToHistory()
+  }, [gameState.moves.length, gameState.status, gameState.duration])
+
+  // Action handlers
+  const startNewGame = useCallback(
+    (difficulty: GameSettings['difficulty'], playerDisc: DiscColor) => {
+      dispatch({ type: 'START_GAME', payload: { difficulty, playerDisc } })
+      setBoardUIState(prev => ({ ...prev, hoveredColumn: null }))
+    },
+    []
+  )
+
+  const makeMove = useCallback(
+    (column: number) => {
+      if (gameState.status === GameStatus.IN_PROGRESS && gameState.currentPlayer === 'HUMAN') {
+        dispatch({ type: 'MAKE_MOVE', payload: { column } })
+      }
+    },
+    [gameState.status, gameState.currentPlayer]
+  )
+
+  const resetGame = useCallback(() => {
+    dispatch({ type: 'RESET_GAME' })
+    setBoardUIState(prev => ({ ...prev, hoveredColumn: null }))
+    if (aiTimeoutRef.current) {
+      clearTimeout(aiTimeoutRef.current)
+      isAIThinkingRef.current = false
+    }
+  }, [])
+
+  const pauseGame = useCallback(() => {
+    if (gameState.status === GameStatus.IN_PROGRESS) {
+      dispatch({ type: 'PAUSE_GAME' })
+    }
+  }, [gameState.status])
+
+  const resumeGame = useCallback(() => {
+    if (gameState.status === GameStatus.PAUSED) {
+      dispatch({ type: 'RESUME_GAME' })
+    }
+  }, [gameState.status])
+
+  const updateSettings = useCallback(
+    (settings: Partial<GameSettings>) => {
+      dispatch({ type: 'UPDATE_SETTINGS', payload: settings })
+    },
+    []
+  )
+
+  // UI action handlers
+  const setHoveredColumn = useCallback(
+    (column: number | null) => {
+      setBoardUIState(prev => ({ ...prev, hoveredColumn: column }))
+    },
+    []
+  )
+
+  const startAnimation = useCallback(
+    (type: 'drop' | 'win', column?: number, row?: number) => {
+      setBoardUIState(prev => ({
+        ...prev,
+        isAnimating: true,
+        animationType: type,
+        animationTarget: column !== undefined && row !== undefined ? { column, row } : undefined,
+      }))
+    },
+    []
+  )
+
+  const endAnimation = useCallback(() => {
+    setBoardUIState(prev => ({
+      ...prev,
+      isAnimating: false,
+      animationType: 'none',
+      animationTarget: undefined,
+    }))
+  }, [])
+
+  // Computed values
+  const isAIThinking = isAIThinkingRef.current
+  const canPlayerMove =
+    gameState.status === GameStatus.IN_PROGRESS &&
+    gameState.currentPlayer === 'HUMAN' &&
+    !gameState.isPaused
+
+  const canPause = gameState.status === GameStatus.IN_PROGRESS && !gameState.isPaused
+  const canResume = gameState.status === GameStatus.PAUSED
+
+  const gameStats = {
+    totalMoves: gameState.moves.length,
+    duration: formatDuration(gameState.duration),
+    isValid: isValidGameState(gameState),
+  }
+
+  // Board helpers
+  const isValidMoveHandler = useCallback(
+    (column: number) => {
+      return isValidMove(gameState.board, column)
+    },
+    [gameState.board]
+  )
+
+  const getValidMovesHandler = useCallback(() => {
+    return getValidMoves(gameState.board)
+  }, [gameState.board])
+
+  const getCellOwner = useCallback(
+    (row: number, col: number) => {
+      const cell = gameState.board.grid[row][col]
+      if (cell === gameState.playerDisc) return 'HUMAN'
+      if (cell === gameState.aiDisc) return 'AI'
+      return null
+    },
+    [gameState.board, gameState.playerDisc, gameState.aiDisc]
+  )
+
+  const isLastMove = useCallback(
+    (row: number, col: number) => {
+      const lastMove = gameState.moves[gameState.moves.length - 1]
+      return lastMove?.row === row && lastMove?.column === col
+    },
+    [gameState.moves]
+  )
+
+  const isWinningCell = useCallback(
+    (row: number, col: number) => {
+      return gameState.winningLine?.some(cell => cell.row === row && cell.col === col) || false
+    },
+    [gameState.winningLine]
+  )
+
+  return {
+    gameState,
+    boardUIState,
+    startNewGame,
+    makeMove,
+    resetGame,
+    pauseGame,
+    resumeGame,
+    updateSettings,
+    setHoveredColumn,
+    startAnimation,
+    endAnimation,
+    isAIThinking,
+    canPlayerMove,
+    canPause,
+    canResume,
+    gameStats,
+    isValidMove: isValidMoveHandler,
+    getValidMoves: getValidMovesHandler,
+    getCellOwner,
+    isLastMove,
+    isWinningCell,
+    loadIncompleteGame,
+  }
+}
+
+// Helper functions
+function isValidGameState(state: GameState): boolean {
+  return state.id !== '' && state.board !== null
+}
+
+function formatDuration(milliseconds: number): string {
+  const seconds = Math.floor(milliseconds / 1000)
+  if (seconds < 60) return `${seconds}s`
+  const minutes = Math.floor(seconds / 60)
+  return `${minutes}m ${seconds % 60}s`
+}

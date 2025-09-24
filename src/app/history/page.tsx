@@ -32,18 +32,25 @@ interface GameHistoryEntry {
  * Convert history service data to display format
  */
 function convertToDisplayFormat(historyData: any[]): GameHistoryEntry[] {
-  return historyData.map(game => ({
-    id: game.id,
-    playerDisc: game.playerDisc,
-    aiDisc: game.aiDisc,
-    difficulty: game.difficulty,
-    status: game.status,
-    winner: game.winner,
-    moves: game.moves.length,
-    duration: game.duration,
-    createdAt: new Date(game.createdAt),
-    completedAt: game.completedAt ? new Date(game.completedAt) : null,
-  }))
+  return historyData.map(game => {
+    const gameEntry: GameHistoryEntry = {
+      id: game.id,
+      playerDisc: game.playerDisc,
+      aiDisc: game.aiDisc,
+      difficulty: game.difficulty,
+      status: game.status,
+      winner: game.winner,
+      moves: game.moves.length,
+      duration: game.duration,
+      createdAt: new Date(game.createdAt),
+    }
+
+    if (game.completedAt) {
+      gameEntry.completedAt = new Date(game.completedAt)
+    }
+
+    return gameEntry
+  })
 }
 
 /**

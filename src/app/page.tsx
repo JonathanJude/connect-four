@@ -340,6 +340,11 @@ export default function GamePage() {
     setShowCelebration(false)
   }, [])
 
+  // Handle starting a new game with selected difficulty
+  const handleStartGame = useCallback((difficulty: 'easy' | 'medium' | 'hard') => {
+    startNewGame(difficulty, 'red')
+  }, [startNewGame])
+
   // Settings functionality commented out for now
   // const handleSettings = useCallback(() => {
   //   openDialog()
@@ -484,7 +489,7 @@ export default function GamePage() {
         <div className="space-y-6 lg:space-y-0 lg:grid lg:grid-cols-3 lg:gap-8">
           {/* Game Board - Full width on mobile, 2/3 on desktop */}
           <div className="lg:col-span-2">
-            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-4 sm:p-6">
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-4 sm:p-6 relative">
               <div className="flex justify-center">
                 <Board
                   board={gameState.board}
@@ -497,6 +502,37 @@ export default function GamePage() {
                   showHoverPreview={settings.enableAnimations}
                 />
               </div>
+
+              {/* Start Game Overlay */}
+              {convertGameStatus(gameState.status) === GameStatus.NOT_STARTED && (
+                <div className="absolute inset-0 bg-black bg-opacity-50 rounded-xl flex items-center justify-center">
+                  <div className="text-center text-white p-6">
+                    <div className="text-4xl mb-4">🎮</div>
+                    <h3 className="text-xl font-bold mb-2">Ready to Play?</h3>
+                    <p className="text-gray-300 mb-4">Select a difficulty to start the game!</p>
+                    <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                      <button
+                        onClick={() => handleStartGame('easy')}
+                        className="px-4 py-2 bg-green-500 hover:bg-green-600 rounded-lg font-semibold transition-colors"
+                      >
+                        Easy
+                      </button>
+                      <button
+                        onClick={() => handleStartGame('medium')}
+                        className="px-4 py-2 bg-blue-500 hover:bg-blue-600 rounded-lg font-semibold transition-colors"
+                      >
+                        Medium
+                      </button>
+                      <button
+                        onClick={() => handleStartGame('hard')}
+                        className="px-4 py-2 bg-red-500 hover:bg-red-600 rounded-lg font-semibold transition-colors"
+                      >
+                        Hard
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
