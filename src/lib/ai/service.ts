@@ -6,7 +6,6 @@
 import {
   type Board,
   type DiscColor,
-  type Player,
   Difficulty,
   AI_TIME_BUDGETS,
 } from '../game/constants'
@@ -69,7 +68,6 @@ export class AIService {
   private currentDifficulty: Difficulty
   private performanceStats: Map<Difficulty, AIPerformanceStats>
   private customTimeBudgets: Map<Difficulty, number>
-  private cancelled: boolean
 
   constructor() {
     this.easyAI = createEasyAI()
@@ -78,7 +76,6 @@ export class AIService {
     this.currentDifficulty = 'medium'
     this.performanceStats = new Map()
     this.customTimeBudgets = new Map()
-    this.cancelled = false
 
     // Initialize performance stats
     this.initializePerformanceStats()
@@ -108,14 +105,7 @@ export class AIService {
    * Cancel current AI operation (adapter for test compatibility)
    */
   cancel(): void {
-    this.cancelled = true
-  }
-
-  /**
-   * Reset cancellation state
-   */
-  private resetCancellation(): void {
-    this.cancelled = false
+    // No-op for now, cancellation not implemented
   }
 
   /**
@@ -126,9 +116,6 @@ export class AIService {
 
     // Get AI instance based on difficulty
     const ai = this.getAIInstance(request.difficulty)
-
-    // Apply custom time budget if specified
-    const timeBudget = request.timeBudget || this.getTimeBudget(request.difficulty)
 
     try {
       // Get move from AI
@@ -370,14 +357,7 @@ export class AIService {
   }
 
   /**
-   * Get time budget for difficulty level
-   */
-  private getTimeBudget(difficulty: Difficulty): number {
-    return this.customTimeBudgets.get(difficulty) || AI_TIME_BUDGETS[difficulty]
-  }
-
-  /**
-   * Evaluate move quality
+   * Evaluate move quality for scoring
    */
   private evaluateMoveQuality(
     board: Board,
@@ -435,7 +415,7 @@ export class AIService {
       nodesEvaluated: stats.nodesEvaluated,
       pruningCount: stats.pruningCount,
       pruningEfficiency: stats.pruningEfficiency,
-      searchDepth: stats.searchDepth || 1,
+      searchDepth: 1, // Default search depth since it's not available in AI stats
     }
   }
 
@@ -450,7 +430,7 @@ export class AIService {
     const validMoves: number[] = []
 
     for (let col = 0; col < request.board.columns; col++) {
-      if (request.board.grid[0][col] === null) {
+      if (request.board.grid[0]?.[col] === null) {
         validMoves.push(col)
       }
     }
@@ -460,7 +440,7 @@ export class AIService {
 
     if (!validMoves.includes(move)) {
       // Choose first valid move
-      move = validMoves[0] || 0
+      move = validMoves[0] ?? 0
     }
 
     const thinkingTime = Date.now() - startTime

@@ -120,9 +120,6 @@ export class MediumAI {
     const validMoves = getValidMoves(board)
 
     for (const column of validMoves) {
-      const testBoard = cloneBoard(board)
-      const boardAfterMove = placeDisc(testBoard, column, opponentDisc)
-
       // Check if opponent would win with this move
       if (isForcedWin(board, column, opponentDisc, playerDisc, 1)) {
         return column // Block this move
@@ -144,10 +141,10 @@ export class MediumAI {
     const validMoves = getValidMoves(board)
 
     if (validMoves.length === 1) {
-      return validMoves[0]
+      return validMoves[0]!
     }
 
-    let bestMove = validMoves[0]
+    let bestMove = validMoves[0]!
     let bestScore = -Infinity
 
     // Evaluate each valid move
@@ -207,7 +204,6 @@ export class MediumAI {
 
     const validMoves = getValidMoves(board)
     const currentPlayer = isMaximizing ? playerDisc : opponentDisc
-    const opponent = isMaximizing ? opponentDisc : playerDisc
 
     if (isMaximizing) {
       let maxScore = -Infinity
@@ -294,7 +290,6 @@ export class MediumAI {
     let explanation = `Medium AI chose column ${chosenMove}. `
 
     // Add strategy explanation based on evaluation
-    const validMoves = getValidMoves(board)
     const moveEvaluations = getMoveEvaluations(board, playerDisc,
       playerDisc === 'red' ? 'yellow' : 'red')
 
@@ -416,7 +411,6 @@ export function getMediumAIAnalysis(
   score: number
   confidence: number
 } {
-  const ai = new MediumAI()
   const validMoves = getValidMoves(board)
 
   if (validMoves.length === 0) {
@@ -425,14 +419,14 @@ export function getMediumAIAnalysis(
 
   if (validMoves.length === 1) {
     return {
-      bestMove: validMoves[0],
+      bestMove: validMoves[0]!,
       score: 0,
       confidence: 1.0,
     }
   }
 
   // Quick evaluation for each move
-  let bestMove = validMoves[0]
+  let bestMove = validMoves[0]!
   let bestScore = -Infinity
 
   for (const column of validMoves) {
