@@ -29,9 +29,8 @@ const DEFAULT_SETTINGS: GameSettings = {
   playerDisc: 'red',
   difficulty: 'medium',
   soundEnabled: true,
-  animationsEnabled: true,
-  theme: 'auto',
-  language: 'en',
+  theme: 'light',
+  reduceMotion: false,
 }
 
 /**
@@ -85,8 +84,8 @@ export class LocalStorageSettings {
         }
 
         // Ensure theme compatibility
-        if (!['light', 'dark', 'auto'].includes(this.settings.theme)) {
-          this.settings.theme = 'auto'
+        if (!['light', 'dark'].includes(this.settings.theme)) {
+          this.settings.theme = 'light'
         }
 
         // Ensure difficulty compatibility
@@ -130,11 +129,11 @@ export class LocalStorageSettings {
   /**
    * Get theme setting
    */
-  getTheme(): 'light' | 'dark' | 'auto' {
+  getTheme(): 'light' | 'dark' {
     try {
       const theme = localStorage.getItem(STORAGE_KEYS.THEME)
-      if (theme && ['light', 'dark', 'auto'].includes(theme)) {
-        return theme as 'light' | 'dark' | 'auto'
+      if (theme && ['light', 'dark'].includes(theme)) {
+        return theme as 'light' | 'dark'
       }
     } catch (error) {
       console.warn('Failed to get theme from localStorage:', error)
@@ -146,7 +145,7 @@ export class LocalStorageSettings {
   /**
    * Set theme setting
    */
-  setTheme(theme: 'light' | 'dark' | 'auto'): void {
+  setTheme(theme: 'light' | 'dark'): void {
     try {
       localStorage.setItem(STORAGE_KEYS.THEME, theme)
       this.saveSettings({ theme })

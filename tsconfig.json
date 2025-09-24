@@ -35,7 +35,7 @@
     "noUnusedParameters": false,
     "exactOptionalPropertyTypes": false,
     "noImplicitOverride": true,
-    "noPropertyAccessFromIndexSignature": true,
+    "noPropertyAccessFromIndexSignature": false,
     "noUncheckedIndexedAccess": false,
     "forceConsistentCasingInFileNames": true,
     "allowUnusedLabels": false,
