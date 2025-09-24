@@ -1,0 +1,25 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(bash:*)",
+      "mcp__Puppeteer__puppeteer_navigate",
+      "mcp__Puppeteer__puppeteer_screenshot",
+      "Bash(npm run dev:*)",
+      "Bash(npm run build:*)",
+      "Bash(grep:*)",
+      "mcp__Puppeteer__puppeteer_click",
+      "mcp__Puppeteer__puppeteer_evaluate",
+      "Bash(lsof:*)",
+      "Bash(curl:*)",
+      "Bash(node:*)",
+      "Bash(npx tsc:*)",
+      "Bash(cat:*)",
+      "Bash(pkill:*)",
+      "Bash(timeout:*)",
+      "Bash(npm run lint)",
+      "Bash(npm install:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

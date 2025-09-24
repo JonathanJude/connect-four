@@ -1,50 +1,119 @@
-# [PROJECT_NAME] Constitution
-<!-- Example: Spec Constitution, TaskFlow Constitution, etc. -->
+<!-- Sync Impact Report -->
+<!-- Version change: 0.0.0 → 1.0.0 -->
+<!-- Modified principles: All principles added (new constitution) -->
+<!-- Added sections: Core Principles, Technical Requirements, Development Standards, Governance -->
+<!-- Removed sections: None -->
+<!-- Templates requiring updates: ✅ updated - .specify/templates/plan-template.md, .specify/templates/spec-template.md, .specify/templates/tasks-template.md -->
+<!-- Follow-up TODOs: None -->
+
+# Connect Four Constitution
 
 ## Core Principles
 
-### [PRINCIPLE_1_NAME]
-<!-- Example: I. Library-First -->
-[PRINCIPLE_1_DESCRIPTION]
-<!-- Example: Every feature starts as a standalone library; Libraries must be self-contained, independently testable, documented; Clear purpose required - no organizational-only libraries -->
+### I. React + Next.js Stack Only
 
-### [PRINCIPLE_2_NAME]
-<!-- Example: II. CLI Interface -->
-[PRINCIPLE_2_DESCRIPTION]
-<!-- Example: Every library exposes functionality via CLI; Text in/out protocol: stdin/args → stdout, errors → stderr; Support JSON + human-readable formats -->
+Every component MUST use React with Next.js App Router and TypeScript exclusively. No alternative frameworks or libraries permitted. All code must leverage Next.js features for routing, data fetching, and optimization.
 
-### [PRINCIPLE_3_NAME]
-<!-- Example: III. Test-First (NON-NEGOTIABLE) -->
-[PRINCIPLE_3_DESCRIPTION]
-<!-- Example: TDD mandatory: Tests written → User approved → Tests fail → Then implement; Red-Green-Refactor cycle strictly enforced -->
+### II. TailwindCSS + shadcn/ui Styling
 
-### [PRINCIPLE_4_NAME]
-<!-- Example: IV. Integration Testing -->
-[PRINCIPLE_4_DESCRIPTION]
-<!-- Example: Focus areas requiring integration tests: New library contract tests, Contract changes, Inter-service communication, Shared schemas -->
+All styling MUST use TailwindCSS utilities and custom keyframes only. shadcn/ui components are permitted for base UI elements. Animation libraries like Framer Motion are strictly prohibited - all animations must be implemented via Tailwind keyframes and utilities.
 
-### [PRINCIPLE_5_NAME]
-<!-- Example: V. Observability, VI. Versioning & Breaking Changes, VII. Simplicity -->
-[PRINCIPLE_5_DESCRIPTION]
-<!-- Example: Text I/O ensures debuggability; Structured logging required; Or: MAJOR.MINOR.BUILD format; Or: Start simple, YAGNI principles -->
+### III. Browser Native Persistence
 
-## [SECTION_2_NAME]
-<!-- Example: Additional Constraints, Security Requirements, Performance Standards, etc. -->
+All persistence MUST use browser Web APIs directly (localStorage + IndexedDB). External persistence libraries are forbidden. Data models must be designed for browser storage limitations and offline functionality.
 
-[SECTION_2_CONTENT]
-<!-- Example: Technology stack requirements, compliance standards, deployment policies, etc. -->
+### IV. AI Game Logic Implementation
 
-## [SECTION_3_NAME]
-<!-- Example: Development Workflow, Review Process, Quality Gates, etc. -->
+Single player vs Computer gameplay MUST be implemented with three AI difficulty levels:
 
-[SECTION_3_CONTENT]
-<!-- Example: Code review requirements, testing gates, deployment approval process, etc. -->
+- Easy: Random move selection
+- Medium: Heuristic-based shallow minimax
+- Hard: Full minimax with alpha-beta pruning
+
+### V. Offline-First PWA Architecture
+
+Application MUST run fully offline after initial load and be deployable to Vercel as a Progressive Web App. All assets and logic must be cacheable, with service worker implementation for offline functionality.
+
+## Technical Requirements
+
+### Technology Stack Mandates
+
+- Frontend: React 18+ with Next.js 14+ (App Router only)
+- Language: TypeScript exclusively
+- Styling: TailwindCSS with shadcn/ui components
+- State Management: React hooks and context only
+- Persistence: localStorage + IndexedDB (no external libraries)
+- Deployment: Vercel with PWA configuration
+
+### Styling Requirements
+
+- Modern, playful, colorful visual design
+- Smooth animations using only TailwindCSS keyframes
+- Responsive design for all screen sizes
+- Dark/light theme support via CSS variables
+
+### Performance Requirements
+
+- Bundle size optimization for offline capability
+- Lazy loading of non-critical components
+- Efficient state management to prevent unnecessary re-renders
+- Optimized AI algorithms for smooth gameplay
+
+## Development Standards
+
+### Code Quality Standards
+
+- All code MUST be written in TypeScript with strict mode enabled
+- ESLint and Prettier configurations enforced
+- Component naming must follow PascalCase for components, camelCase for functions
+- File structure must follow Next.js App Router conventions
+
+### Documentation Requirements
+
+- Every component MUST have JSDoc comments
+- Complex algorithms (especially AI logic) must be thoroughly documented
+- User stories and technical specifications must be comprehensive
+- Accessibility considerations must be documented
+
+### Testing Requirements
+
+- Unit tests for all game logic and utility functions
+- Integration tests for component interactions
+- End-to-end tests for complete user flows
+- AI difficulty levels must be tested for correctness
+- Accessibility testing with keyboard navigation and screen readers
+
+### Deliverable Standards
+
+Every specification, plan, and task MUST include:
+
+- Clear user stories & flows
+- Component and file breakdown with names and purposes
+- Accessibility checklist (keyboard, ARIA, color contrast)
+- Tailwind keyframe/animation plan
+- Testing strategy
+- Roadmap for future features (1v1 local multiplayer, themes)
 
 ## Governance
-<!-- Example: Constitution supersedes all other practices; Amendments require documentation, approval, migration plan -->
 
-[GOVERNANCE_RULES]
-<!-- Example: All PRs/reviews must verify compliance; Complexity must be justified; Use [GUIDANCE_FILE] for runtime development guidance -->
+### Constitution Compliance
 
-**Version**: [CONSTITUTION_VERSION] | **Ratified**: [RATIFICATION_DATE] | **Last Amended**: [LAST_AMENDED_DATE]
-<!-- Example: Version: 2.1.1 | Ratified: 2025-06-13 | Last Amended: 2025-07-16 -->
+This constitution supersedes all other development practices. All pull requests and code reviews MUST verify compliance with these principles. Any deviation requires explicit justification and team approval.
+
+### Amendment Process
+
+- Amendments require documentation, team approval, and migration plan
+- Version changes follow semantic versioning:
+  - MAJOR: Backward incompatible principle removals or redefinitions
+  - MINOR: New principles or substantially expanded guidance
+  - PATCH: Clarifications, wording fixes, non-semantic refinements
+- All amendments must update dependent templates and documentation
+
+### Quality Assurance
+
+- Regular code reviews must check constitution compliance
+- Architecture decisions must align with core principles
+- New dependencies require evaluation against constitution constraints
+- Technical debt must be documented and addressed according to priority
+
+**Version**: 1.0.0 | **Ratified**: 2025-09-22 | **Last Amended**: 2025-09-22
