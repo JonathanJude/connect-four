@@ -21,7 +21,7 @@ import type { DiscColor, PlayerInfo } from '@/lib/game/constants'
  * Replay Service Configuration
  */
 const REPLAY_CONFIG = {
-  DEFAULT_SPEED: 1 as ReplaySpeed,
+  DEFAULT_SPEED: '1x' as ReplaySpeed,
   SPEED_MULTIPLIERS: {
     '0.5x': 0.5,
     '1x': 1,
@@ -106,7 +106,7 @@ class ReplaySessionImpl implements ReplaySession {
             discColor = this.metadata.gameData.aiDisc
           } else if (move.player === 'PLAYER_1' || move.player === 'PLAYER_2') {
             // For multiplayer games, get disc color from players metadata
-            const players = this.metadata.gameData.metadata?.players || []
+            const players = (this.metadata.gameData.metadata?.players || []) as any[]
             const player = players.find(p => p.type === move.player)
             discColor = player?.discColor || (move.player === 'PLAYER_1' ? 'red' : 'yellow')
           } else {
@@ -222,7 +222,7 @@ class ReplaySessionImpl implements ReplaySession {
   /**
    * Update last accessed time
    */
-  private updateLastAccessed(): void {
+  public updateLastAccessed(): void {
     this.metadata.lastAccessed = new Date()
   }
 
@@ -233,8 +233,8 @@ class ReplaySessionImpl implements ReplaySession {
     // This would use the actual game logic to detect winning positions
     // For now, we'll use a simplified implementation
     const gameData = this.metadata.gameData
-    if (gameData.winningLine && moveIndex >= gameData.moves.length) {
-      return gameData.winningLine
+    if (gameData.metadata?.winningLine && moveIndex >= gameData.moves.length) {
+      return gameData.metadata.winningLine
     }
     return null
   }

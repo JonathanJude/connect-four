@@ -133,7 +133,7 @@ export class IndexedDBStorage {
       playerDisc: gameState.playerDisc,
       aiDisc: gameState.aiDisc,
       difficulty: gameState.difficulty,
-      status: gameState.status,
+      status: gameState.status as 'IN_PROGRESS' | 'HUMAN_WIN' | 'AI_WIN' | 'DRAW',
       moves: gameState.moves.map(move => ({
         column: move.column,
         row: move.row,
@@ -238,18 +238,18 @@ export class IndexedDBStorage {
 
         // Apply additional filters
         if (options.difficulty) {
-          games = games.filter(game => game.difficulty === options.difficulty)
+          games = games.filter((game: StoredGame) => game.difficulty === options.difficulty)
         }
 
         if (options.playerDisc) {
-          games = games.filter(game => game.playerDisc === options.playerDisc)
+          games = games.filter((game: StoredGame) => game.playerDisc === options.playerDisc)
         }
 
         // Sort games
         const sortBy = options.sortBy || 'startedAt'
         const sortOrder = options.sortOrder || 'desc'
 
-        games.sort((a, b) => {
+        games.sort((a: StoredGame, b: StoredGame) => {
           let valueA: any, valueB: any
 
           switch (sortBy) {
@@ -303,9 +303,9 @@ export class IndexedDBStorage {
       playerDisc: settings.playerDisc,
       difficulty: settings.difficulty,
       soundEnabled: settings.soundEnabled,
-      animationsEnabled: settings.animationsEnabled,
+      animationsEnabled: !settings.reduceMotion,
       theme: settings.theme,
-      language: settings.language,
+      language: 'en', // Default since not available in GameSettings interface
       lastUpdated: new Date(),
     }
 
@@ -341,9 +341,8 @@ export class IndexedDBStorage {
           playerDisc: stored.playerDisc,
           difficulty: stored.difficulty,
           soundEnabled: stored.soundEnabled,
-          animationsEnabled: stored.animationsEnabled,
+          reduceMotion: !stored.animationsEnabled,
           theme: stored.theme,
-          language: stored.language,
         })
       }
 
@@ -415,9 +414,21 @@ export class IndexedDBStorage {
     const games = await this.getAllGames()
     const settings = await this.loadSettings()
 
+    // Convert GameSettings to StoredSettings if available
+    const storedSettings = settings ? {
+      id: 'default',
+      playerDisc: settings.playerDisc,
+      difficulty: settings.difficulty,
+      soundEnabled: settings.soundEnabled,
+      animationsEnabled: !settings.reduceMotion,
+      theme: settings.theme,
+      language: 'en', // Default value
+      lastUpdated: new Date(),
+    } : null
+
     return {
       games,
-      settings,
+      settings: storedSettings,
       exportedAt: new Date(),
     }
   }

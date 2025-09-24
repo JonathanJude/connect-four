@@ -1,3 +1,5 @@
+import React from 'react'
+
 /**
  * Comprehensive Logging and Error Tracking System
  * Provides structured logging, error tracking, and performance monitoring
@@ -410,7 +412,7 @@ export class Logger {
 
     // Custom error events
     window.addEventListener('app-error', (event) => {
-      const errorInfo = event.detail
+      const errorInfo = (event as CustomEvent).detail
       this.error(errorInfo.type || 'component', errorInfo.message, errorInfo, ['component'])
     })
   }
@@ -433,9 +435,10 @@ export class Logger {
         const observer = new PerformanceObserver((list) => {
           for (const entry of list.getEntries()) {
             if (entry.entryType === 'resource') {
+              const resourceEntry = entry as PerformanceResourceTiming
               this.recordPerformance('resource_load', entry.duration, 'resource', {
                 name: entry.name,
-                type: entry.initiatorType
+                type: resourceEntry.initiatorType
               })
             }
           }
