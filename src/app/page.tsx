@@ -438,10 +438,7 @@ export default function GamePage() {
     startMultiplayerGame(players)
   }, [startMultiplayerGame])
 
-  // Handle showing game history
-  const handleShowHistory = useCallback(() => {
-    window.location.href = '/history'
-  }, [])
+
 
   // Settings functionality commented out for now
   // const handleSettings = useCallback(() => {

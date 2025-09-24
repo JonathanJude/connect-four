@@ -1,27 +1,35 @@
-import { GameState, Player, Board, Position } from '@/types/game';
+import { GameState, Player, Board, Position, DiscColor } from '@/types/game';
+import { BOARD_ROWS, BOARD_COLUMNS } from './game/constants';
 
 export const createEmptyBoard = (): Board => {
-  return Array(6)
-    .fill(null)
-    .map(() => Array(7).fill(null));
+  return {
+    grid: Array(BOARD_ROWS)
+      .fill(null)
+      .map(() => Array(BOARD_COLUMNS).fill(null)),
+    rows: BOARD_ROWS,
+    columns: BOARD_COLUMNS,
+  };
 };
 
 export const createInitialGameState = (): GameState => {
   return {
     board: createEmptyBoard(),
-    currentPlayer: 'red',
-    winner: null,
+    currentPlayer: 'PLAYER_1' as Player,
+    winner: undefined,
     isDraw: false,
   };
 };
 
-export const dropPiece = (board: Board, column: number, player: Player): Board | null => {
-  const newBoard = board.map(row => [...row]);
+export const dropPiece = (board: Board, column: number, player: DiscColor): Board | null => {
+  const newBoard = {
+    ...board,
+    grid: board.grid.map(row => [...row]),
+  };
 
   // Find the lowest empty row in the column
-  for (let row = 5; row >= 0; row--) {
-    if (newBoard[row][column] === null) {
-      newBoard[row][column] = player;
+  for (let row = BOARD_ROWS - 1; row >= 0; row--) {
+    if (newBoard.grid[row][column] === null) {
+      newBoard.grid[row][column] = player;
       return newBoard;
     }
   }
@@ -30,9 +38,9 @@ export const dropPiece = (board: Board, column: number, player: Player): Board |
   return null;
 };
 
-export const checkWinner = (board: Board, lastMove: Position): Player => {
-  const { row, col } = lastMove;
-  const player = board[row][col];
+export const checkWinner = (board: Board, lastMove: Position): DiscColor | null => {
+  const { row, column } = lastMove;
+  const player = board.grid[row][column];
 
   if (!player) return null;
 
@@ -48,21 +56,21 @@ export const checkWinner = (board: Board, lastMove: Position): Player => {
     let count = 1; // Count the piece we just placed
 
     // Check in positive direction
-    let r = row + dr;
-    let c = col + dc;
-    while (r >= 0 && r < 6 && c >= 0 && c < 7 && board[r][c] === player) {
+    let r = row + dr!;
+    let c = column + dc!;
+    while (r >= 0 && r < BOARD_ROWS && c >= 0 && c < BOARD_COLUMNS && board.grid[r][c] === player) {
       count++;
-      r += dr;
-      c += dc;
+      r += dr!;
+      c += dc!;
     }
 
     // Check in negative direction
-    r = row - dr;
-    c = col - dc;
-    while (r >= 0 && r < 6 && c >= 0 && c < 7 && board[r][c] === player) {
+    r = row - dr!;
+    c = column - dc!;
+    while (r >= 0 && r < BOARD_ROWS && c >= 0 && c < BOARD_COLUMNS && board.grid[r][c] === player) {
       count++;
-      r -= dr;
-      c -= dc;
+      r -= dr!;
+      c -= dc!;
     }
 
     if (count >= 4) {
@@ -74,13 +82,15 @@ export const checkWinner = (board: Board, lastMove: Position): Player => {
 };
 
 export const checkDraw = (board: Board): boolean => {
-  return board[0].every(cell => cell !== null);
+  return board.grid[0].every(cell => cell !== null);
 };
 
 export const isValidMove = (board: Board, column: number): boolean => {
-  return column >= 0 && column < 7 && board[0][column] === null;
+  return column >= 0 && column < BOARD_COLUMNS && board.grid[0][column] === null;
 };
 
 export const getAvailableColumns = (board: Board): number[] => {
-  return board[0].map((cell, index) => (cell === null ? index : -1)).filter(col => col !== -1);
+  return Array.from({ length: BOARD_COLUMNS }, (_, i) => i).filter(col => 
+    board.grid[0][col] === null
+  );
 };
