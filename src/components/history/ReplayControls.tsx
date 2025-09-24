@@ -266,7 +266,7 @@ function KeyboardShortcuts({
   onNext: () => void
   onSpeedUp: () => void
   onSpeedDown: () => void
-}) {
+}): JSX.Element {
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       // Ignore if typing in an input

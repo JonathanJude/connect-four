@@ -187,7 +187,7 @@ export const Cell = React.memo(function Cell({
   }, [isHovered, disc, disabled, col, prefersReducedMotion])
 
   // Cell position indicator (for debugging)
-  const renderPositionIndicator = () => {
+  const renderPositionIndicator = (): null => {
     return null // Removed coordinate labels as requested
   }
 

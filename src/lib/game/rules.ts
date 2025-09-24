@@ -7,6 +7,7 @@ import {
   type Board,
   type Move,
   type GameState,
+  type GameStatus,
   type Position,
   type WinningLine,
   type Player,
@@ -209,6 +210,7 @@ export function createGameState(
     playerDisc,
     aiDisc,
     startedAt: new Date(),
+    isPaused: false,
   }
 }
 

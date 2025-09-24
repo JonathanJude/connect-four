@@ -10,6 +10,7 @@ import {
   type GameHistoryStats,
   type GameExportFormat,
 } from '@/types/history'
+import { GameStatus } from '@/types/game'
 import { persistenceService } from '@/lib/storage/service'
 
 /**
@@ -30,10 +31,10 @@ class GameHistoryEntryImpl implements GameHistoryEntry {
     public id: string,
     public playerId: string,
     public playerDisc: 'red' | 'yellow',
+    public status: GameStatus,
+    public winner: 'HUMAN' | 'AI' | 'PLAYER_1' | 'PLAYER_2' | 'DRAW' | null,
     public aiDisc?: 'red' | 'yellow',
     public difficulty?: 'easy' | 'medium' | 'hard',
-    public status?: 'IN_PROGRESS' | 'PLAYER_WON' | 'AI_WON' | 'DRAW' | 'PLAYER_1_WON' | 'PLAYER_2_WON',
-    public winner?: 'HUMAN' | 'AI' | 'PLAYER_1' | 'PLAYER_2' | 'DRAW' | null,
     public moves: Array<{
       player: 'HUMAN' | 'AI' | 'PLAYER_1' | 'PLAYER_2'
       position: { row: number; col: number }
